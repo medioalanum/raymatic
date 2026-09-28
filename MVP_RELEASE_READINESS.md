@@ -20,6 +20,7 @@ This is a readiness finding, not a request for feature expansion.
 | Tested release target | `aarch64-apple-darwin` |
 | Archive | `raymatic-v0.1.0-aarch64-apple-darwin.tar.gz` |
 | SHA-256 | `b544ac9c0cc7fff744ffd10150bf8ef38b9876830ee6ca8c6b75f7d58012beec` |
+| GitHub distribution | [Draft release v0.1.0](https://github.com/medioalanum/raymatic/releases/tag/untagged-6a5ec93983abcf4bb492); not published. |
 | Installation | Manual archive extraction and `PATH` placement; see `docs/INSTALL.md`. |
 | Project structure | `content/`, `presentation/page.html`, `README.md`; build writes `output/`. |
 
