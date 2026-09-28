@@ -1,0 +1,5 @@
+error[REF001]: Internal reference does not resolve
+  --> page.md:2:1
+  No content produces this address.
+  expected: an address produced by the publication
+  help: Correct the target.

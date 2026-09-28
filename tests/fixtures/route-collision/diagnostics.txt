@@ -1,0 +1,10 @@
+error[ADDR001]: Route collision
+  --> PLACEHOLDER/content/about/index.md:2:1: this content derives the colliding address
+  Multiple content files derive the address /about/.
+  expected: a unique address for every content file
+  help: Rename or move one of the colliding content files.
+error[ADDR001]: Route collision
+  --> PLACEHOLDER/content/about.md:2:1: this content derives the colliding address
+  Multiple content files derive the address /about/.
+  expected: a unique address for every content file
+  help: Rename or move one of the colliding content files.

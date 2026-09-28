@@ -1,0 +1,26 @@
+[package]
+name = "raymatic"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Static publishing with predictable behavior and actionable diagnostics"
+
+[[bin]]
+name = "ray"
+path = "src/main.rs"
+
+[dependencies]
+clap = "4.5"
+minijinja = "2.18"
+notify = "8"
+pulldown-cmark = "0.13"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tiny_http = "0.12"
+toml = "0.9"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
