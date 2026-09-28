@@ -22,8 +22,6 @@ pub enum AppError {
     Environment(#[from] project::EnvironmentError),
     #[error("Publication is invalid")]
     InvalidPublication(Vec<Diagnostic>),
-    #[error("{0} is not implemented in this bootstrap")]
-    NotImplemented(&'static str),
     #[error("Internal error: {0}")]
     Internal(&'static str),
     #[error("{0}")]
@@ -38,9 +36,6 @@ impl AppError {
                 .map(diagnostic::render)
                 .collect::<Vec<_>>()
                 .join(""),
-            Self::NotImplemented(_) => format!(
-                "error: {self}.\nNo publication was created, validated, built, or served.\n"
-            ),
             Self::Environment(_) | Self::Internal(_) | Self::Operational(_) => {
                 format!("error: {self}\n")
             }

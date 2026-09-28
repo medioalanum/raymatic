@@ -29,8 +29,8 @@ pub enum Rebuild {
 pub fn run(root: &Path) -> Result<(), AppError> {
     let root = root.to_path_buf();
     let state = Arc::new(Mutex::new(DevState::default()));
-    start_server(root.clone(), state.clone())?;
     report_rebuild(&root, &state)?;
+    start_server(root.clone(), state.clone())?;
     eprintln!("Preview available at http://{ADDRESS}");
     let (sender, receiver) = mpsc::channel();
     let mut watcher = notify::recommended_watcher(move |_| {

@@ -17,10 +17,10 @@ cargo test
 cargo build
 ```
 
-`ray check` evaluates and validates the first publication convention. `ray build`
+`ray new [path]` creates a valid starter publication with a short README.
+`ray check` evaluates and validates the publication convention. `ray build`
 evaluates it and safely replaces `output/` only after a complete successful
-render. `ray dev` serves the latest valid preview at `http://127.0.0.1:3000`;
-`ray new [path]` remains explicitly unimplemented.
+render. `ray dev` serves the latest valid preview at `http://127.0.0.1:3000`.
 
 The current vertical slice uses one convention:
 
@@ -50,15 +50,16 @@ First-party unsafe code is forbidden. The library is internal, not a stable SDK.
 ## Scope and next slice
 
 This milestone establishes compilation, dispatch, semantic and diagnostic data,
-source position conversion, tests, CI, and a full multi-content publishing path.
-It does not create projects, support assets, custom addressing, relative-link
-resolution or project configuration.
+source position conversion, tests, CI, a full multi-content publishing path, and
+creation of a self-contained starter publication. It does not support assets,
+custom addressing, relative-link resolution or project configuration.
 
 `dev` watches only `content/` and `presentation/`, coalesces events for 75 ms,
 rebuilds the entire small publication, and serves from `.raymatic-preview`.
 An invalid edit leaves the previous preview intact; a later valid rebuild advances
 the revision endpoint at `/_raymatic/revision`, which triggers browser reloads.
 
-Next: implement `new`, then add assets and their validation to the shared pipeline.
+Next: add only the remaining MVP capability confirmed by the authoritative
+specifications; assets remain deferred unless those specifications require them.
 
 See [bootstrap notes](docs/BOOTSTRAP.md) for design traceability and staged decisions.

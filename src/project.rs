@@ -1,7 +1,7 @@
 //! Filesystem entry boundary. Project syntax is bound in the publishing slice.
 use crate::AppError;
 use std::{
-    io,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -17,6 +17,8 @@ pub enum EnvironmentError {
     NotDirectory(PathBuf),
     #[error("A previous output commit is incomplete at {0}")]
     ExistingCommitState(PathBuf),
+    #[error("Cannot create a publication in non-empty directory {0}")]
+    NonEmptyTarget(PathBuf),
 }
 
 pub struct DiscoveredContent {
@@ -95,8 +97,67 @@ pub fn inspect_root(root: &Path) -> Result<(), EnvironmentError> {
     Ok(())
 }
 
-pub fn create(_target: &Path) -> Result<(), AppError> {
-    // TODO: write the authoritative minimum fixture once publishing can validate it.
-    // Do not create an empty directory and claim it is a valid publication.
-    Err(AppError::NotImplemented("Publication creation"))
+pub fn create(target: &Path) -> Result<(), AppError> {
+    if target.exists() {
+        inspect_root(target)?;
+        if fs::read_dir(target)
+            .map_err(|source| EnvironmentError::Inspect {
+                path: target.to_owned(),
+                source,
+            })?
+            .next()
+            .is_some()
+        {
+            return Err(EnvironmentError::NonEmptyTarget(target.to_owned()).into());
+        }
+    }
+
+    let staging = target.with_extension("raymatic-new");
+    if staging.exists() {
+        return Err(EnvironmentError::ExistingCommitState(staging).into());
+    }
+    fs::create_dir_all(staging.join("content")).map_err(|source| EnvironmentError::Inspect {
+        path: staging.clone(),
+        source,
+    })?;
+    fs::create_dir_all(staging.join("presentation")).map_err(|source| {
+        EnvironmentError::Inspect {
+            path: staging.clone(),
+            source,
+        }
+    })?;
+    write_initial_files(&staging)?;
+
+    if target.exists() {
+        fs::remove_dir(target).map_err(|source| EnvironmentError::Inspect {
+            path: target.to_owned(),
+            source,
+        })?;
+    }
+    fs::rename(&staging, target).map_err(|source| EnvironmentError::Inspect {
+        path: target.to_owned(),
+        source,
+    })?;
+    Ok(())
+}
+
+fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
+    for (relative_path, content) in [
+        (
+            "content/index.md",
+            "+++\ntitle = \"Welcome to Raymatic\"\n+++\n\n# Welcome to Raymatic\n\nEdit this page, then run `ray dev`.\n",
+        ),
+        (
+            "presentation/page.html",
+            "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <title>{{ title }}</title>\n  </head>\n  <body>\n    <main>{{ body }}</main>\n  </body>\n</html>\n",
+        ),
+        (
+            "README.md",
+            "# Raymatic publication\n\n- Write pages in `content/`.\n- Change the shared HTML in `presentation/page.html`.\n- Run `ray dev` for a local preview.\n- Run `ray check` before `ray build`.\n- Find the production site in `output/` after `ray build`.\n",
+        ),
+    ] {
+        let path = root.join(relative_path);
+        fs::write(&path, content).map_err(|source| EnvironmentError::Inspect { path, source })?;
+    }
+    Ok(())
 }

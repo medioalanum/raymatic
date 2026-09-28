@@ -19,13 +19,11 @@ pub fn definition() -> ClapCommand {
         .arg_required_else_help(true)
         .disable_help_subcommand(true)
         .subcommand(
-            ClapCommand::new("new")
-                .about("Create a publication (not implemented)")
-                .arg(
-                    Arg::new("path")
-                        .value_parser(value_parser!(PathBuf))
-                        .default_value("."),
-                ),
+            ClapCommand::new("new").about("Create a publication").arg(
+                Arg::new("path")
+                    .value_parser(value_parser!(PathBuf))
+                    .default_value("."),
+            ),
         )
         .subcommand(ClapCommand::new("dev").about("Preview and watch a publication"))
         .subcommand(ClapCommand::new("check").about("Validate a publication"))

@@ -50,7 +50,12 @@ fn commands_fail_without_modifying_existing_files_when_publication_is_invalid() 
         assert_eq!(output.status.code(), Some(1), "{command}");
         assert!(output.stdout.is_empty());
         let stderr = String::from_utf8(output.stderr).unwrap();
-        assert!(stderr.contains("not implemented") || stderr.contains("Cannot inspect"));
+        assert!(
+            stderr.contains("non-empty directory")
+                || stderr.contains("Cannot inspect")
+                || stderr.contains("Expected a directory"),
+            "{command}: {stderr}"
+        );
         assert_eq!(
             fs::read_to_string(root.path().join("output/index.html")).unwrap(),
             "existing publication"
@@ -60,13 +65,53 @@ fn commands_fail_without_modifying_existing_files_when_publication_is_invalid() 
 }
 
 #[test]
-fn new_does_not_claim_to_create_a_publication() {
+fn new_creates_a_valid_publication_with_a_documented_structure() {
     let root = tempfile::tempdir().unwrap();
     let output = ray()
         .current_dir(root.path())
         .args(["new", "my site"])
         .output()
         .unwrap();
+    assert!(output.status.success());
+    let project = root.path().join("my site");
+    for path in ["content/index.md", "presentation/page.html", "README.md"] {
+        assert!(project.join(path).is_file(), "{path}");
+    }
+    assert!(
+        ray()
+            .current_dir(&project)
+            .arg("check")
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
+        ray()
+            .current_dir(&project)
+            .arg("build")
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(project.join("output/index.html").is_file());
+}
+
+#[test]
+fn new_refuses_to_replace_an_existing_project() {
+    let root = tempfile::tempdir().unwrap();
+    let target = root.path().join("my site");
+    fs::create_dir(&target).unwrap();
+    fs::write(target.join("keep.txt"), "keep").unwrap();
+    let output = ray()
+        .current_dir(root.path())
+        .args(["new", "my site"])
+        .output()
+        .unwrap();
     assert_eq!(output.status.code(), Some(1));
-    assert!(!root.path().join("my site").exists());
+    assert!(
+        String::from_utf8(output.stderr)
+            .unwrap()
+            .contains("non-empty directory")
+    );
+    assert_eq!(fs::read_to_string(target.join("keep.txt")).unwrap(), "keep");
 }
