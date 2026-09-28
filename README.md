@@ -1,5 +1,7 @@
 # Raymatic
 
+![Raymatic — from content to a published site without incidental complexity](assets/raymatic-hero.png)
+
 Raymatic is a small file-based publishing tool for turning content and presentation intent into a deterministic static publication. It explores how much incidental publishing machinery a tool can own while keeping the author's files, presentation choices, and deliberate deviations visible.
 
 The project is an early public experiment. It does not claim to be the fastest, easiest, or most complete static-site generator, and its product thesis has not been validated by external user research.
