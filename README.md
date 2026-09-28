@@ -1,7 +1,7 @@
 # Raymatic
 
-Stage 9 bootstrap of the Rust static publishing tool. Package: `raymatic`;
-executable: `ray`. This is not yet a usable static site generator.
+Rust static publishing tool. Package: `raymatic`; executable: `ray`.
+It implements the MVP publication flow: create, preview, validate, and build.
 
 ## Development
 

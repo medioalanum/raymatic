@@ -42,6 +42,7 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
         first.output.entries[0].relative_path,
         std::path::Path::new("index.html")
     );
+    assert!(first.timings.semantic.is_some());
     assert_eq!(
         format!("{:?}", first.output.entries),
         format!("{:?}", second.output.entries)

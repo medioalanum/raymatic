@@ -59,7 +59,7 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
         Ok(value) => value,
         Err(error) => return failure(error.into(), started, timings),
     };
-    let publication = Publication {
+    let publication = timed(&mut timings.semantic, || Publication {
         root: root.into(),
         content,
         presentation: crate::content::Presentation {
@@ -70,9 +70,7 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
             template,
         },
         assets: vec![],
-    };
-    timings.semantic = Some(Duration::ZERO);
-    timings.semantic = Some(Duration::ZERO);
+    });
     diagnostics.extend(timed(&mut timings.validation, || {
         crate::validate::publication(&publication)
     }));
