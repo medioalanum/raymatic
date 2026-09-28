@@ -109,3 +109,11 @@ If the project is released after resolving section 4, observe installation succe
 **NOT READY**
 
 The implementation is technically hardened for the tested path, but the explicit Stage 17 release blockers remain unresolved because the authoritative acceptance criteria are unavailable. Resolve or formally reissue those criteria, rerun the platform and performance checks, then create and smoke-test `v0.1.0-rc.1` before public release.
+
+# Stage 18B — Release Evidence Resolution
+
+The original Stage 18 result above remains **NOT READY** as historical record. Stage 18B searched the repository and available project artifacts and did not recover the missing numeric performance thresholds or historical platform matrix. It therefore made two explicit, narrowly scoped release decisions: a 1-second `check`/`build` budget and a 2-second first-preview/edit-feedback target for the generated starter workload, plus official v0.1 support limited to macOS Apple Silicon. These are new Stage 18B decisions, not reconstructed history.
+
+Five repeated release-binary runs measured `check` and `build` at `0.00 s` displayed precision on macOS Apple Silicon. First-preview and edit-to-visible timing were not instrumented, so those criteria remain accepted evidence limitations. The actual supported target passed the release smoke paths; other targets are unsupported for v0.1 rather than implicitly supported.
+
+The revised Stage 18B recommendation is **READY WITH ACCEPTED LIMITATIONS**. See [RELEASE_EVIDENCE_RESOLUTION.md](RELEASE_EVIDENCE_RESOLUTION.md) for provenance, workload, measurements, matrix, and gate results.
