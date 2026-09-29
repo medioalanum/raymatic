@@ -60,7 +60,10 @@ fn explicit_address_overrides_the_path_derived_default() {
     .unwrap();
 
     let result = evaluate(root.path()).unwrap();
-    assert_eq!(result.publication.content[0].address.as_path(), "/notes/rust/");
+    assert_eq!(
+        result.publication.content[0].address.as_path(),
+        "/notes/rust/"
+    );
     assert!(result.publication.content[0].address_span.is_some());
     assert_eq!(
         result.output.entries[0].relative_path,
