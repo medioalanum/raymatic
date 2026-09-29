@@ -1,14 +1,254 @@
 //! Single evaluation entry for check, build and dev. No output mutations.
-use crate::{AppError,content::{Publication,SourceFile},diagnostic::{Diagnostic,DiagnosticCode,SemanticObject,Severity,SourceLabel},output::OutputPlan,project};
-use std::{path::{Path,PathBuf},time::{Duration,Instant}};
-#[derive(Debug)] pub struct PipelineSuccess{pub publication:Publication,pub output:OutputPlan,pub timings:PipelineTimings}
-#[derive(Debug,Default)] pub struct PipelineTimings{pub discovery:Option<Duration>,pub parsing:Option<Duration>,pub semantic:Option<Duration>,pub validation:Option<Duration>,pub rendering:Option<Duration>,pub planning:Option<Duration>,pub commit:Option<Duration>,pub total:Duration}
-#[derive(Debug)] pub struct PipelineFailure{pub error:AppError,pub timings:Box<PipelineTimings>}
-impl From<PipelineFailure> for AppError{fn from(f:PipelineFailure)->Self{f.error}}
-pub fn evaluate(root:&Path)->Result<PipelineSuccess,PipelineFailure>{let started=Instant::now();let mut timings=PipelineTimings::default();let discovered=match timed(&mut timings.discovery,||project::discover(root)){Ok(v)=>v,Err(e)=>return failure(e.into(),started,timings)};let mut diagnostics=vec![];let content=timed(&mut timings.parsing,||parse_content(&discovered.content,&mut diagnostics));let template=match project::read_text(&discovered.presentation){Ok(v)=>v,Err(e)=>return failure(e.into(),started,timings)};let publication=timed(&mut timings.semantic,||Publication{root:root.into(),content,presentation:crate::content::Presentation{source:SourceFile{path:discovered.presentation.clone(),text:template.clone().into()},template},assets:vec![]});diagnostics.extend(timed(&mut timings.validation,||crate::validate::publication(&publication)));let rendered=timed(&mut timings.rendering,||render_pages(&publication,&mut diagnostics));sort_diagnostics(&mut diagnostics);if !diagnostics.is_empty(){return failure(AppError::InvalidPublication(diagnostics),started,timings)}let output=match timed(&mut timings.planning,||crate::output::plan_html(rendered)){Ok(v)=>v,Err(e)=>return failure(e,started,timings)};timings.total=started.elapsed();Ok(PipelineSuccess{publication,output,timings})}
-fn parse_content(discovered:&[project::DiscoveredContent],diagnostics:&mut Vec<Diagnostic>)->Vec<crate::content::Content>{let mut content=vec![];for file in discovered{match project::read_text(&file.path){Ok(text)=>match crate::content::parse(&file.relative_path,SourceFile{path:file.path.clone(),text:text.into()}){Ok(item)=>content.push(item),Err(d)=>diagnostics.push(*d)},Err(e)=>diagnostics.push(environment_diagnostic(e))}}content}
-fn render_pages(publication:&Publication,diagnostics:&mut Vec<Diagnostic>)->Vec<(String,PathBuf,crate::content::Address)>{let mut pages=vec![];for content in &publication.content{let (path,template)=match resolve_presentation(publication,content){Ok(v)=>v,Err(d)=>{diagnostics.push(d);continue}};match crate::render::page(content,&path,&template){Ok(html)=>pages.push((html,content.source.path.clone(),content.address.clone())),Err(d)=>diagnostics.push(*d)}}pages}
-fn resolve_presentation(publication:&Publication,content:&crate::content::Content)->Result<(PathBuf,String),Diagnostic>{let Some(selection)=&content.presentation else{return Ok((publication.presentation.source.path.clone(),publication.presentation.template.clone()))};let name=&selection.value;if name.is_empty()||name.contains('/')||name.contains('\\')||name=="."||name==".."{return Err(presentation_diagnostic(content,"Invalid presentation selection",format!("`{name}` is not a presentation name."),"a presentation name such as article"))}let path=publication.root.join("presentation").join(format!("{name}.html"));match project::read_text(&path){Ok(template)=>Ok((path,template)),Err(_)=>Err(presentation_diagnostic(content,"Presentation not found",format!("This content selects `{name}`, but presentation/{name}.html does not exist."),"an existing file in presentation/"))}}
-fn presentation_diagnostic(content:&crate::content::Content,summary:&str,explanation:String,expected:&str)->Diagnostic{let span=content.presentation.as_ref().and_then(|p|p.span.as_ref());Diagnostic{severity:Severity::Error,code:DiagnosticCode("PRESENTATION001"),summary:summary.into(),explanation:Some(explanation),primary:Some(SourceLabel{path:content.source.path.clone(),span:span.map(|s|s.bytes.clone()),source:Some(content.source.clone()),message:Some("this content selects the presentation".into())}),related:vec![],object:Some(SemanticObject::Content{address:Some(content.address.as_path().into())}),expected:Some(expected.into()),help:Some("Create the selected presentation file or remove the presentation attribute to use page.html.".into())}}
-fn environment_diagnostic(error:project::EnvironmentError)->Diagnostic{Diagnostic{severity:Severity::Error,code:DiagnosticCode("PROJECT001"),summary:"Invalid project structure".into(),explanation:Some(error.to_string()),primary:None,related:vec![],object:Some(SemanticObject::Publication),expected:Some("the required content and presentation files".into()),help:Some("Create the missing conventional directory or file.".into())}}
-fn sort_diagnostics(d:&mut[Diagnostic]){d.sort_by(|l,r|l.primary.as_ref().map(|x|&x.path).cmp(&r.primary.as_ref().map(|x|&x.path)).then(l.code.0.cmp(r.code.0)).then(l.summary.cmp(&r.summary)))}fn timed<T>(slot:&mut Option<Duration>,work:impl FnOnce()->T)->T{let s=Instant::now();let v=work();*slot=Some(s.elapsed());v}fn failure(error:AppError,started:Instant,mut timings:PipelineTimings)->Result<PipelineSuccess,PipelineFailure>{timings.total=started.elapsed();Err(PipelineFailure{error,timings:Box::new(timings)})}
+use crate::{
+    AppError,
+    content::{Publication, SourceFile},
+    diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
+    output::OutputPlan,
+    project,
+};
+use std::{
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
+};
+
+#[derive(Debug)]
+pub struct PipelineSuccess {
+    pub publication: Publication,
+    pub output: OutputPlan,
+    pub timings: PipelineTimings,
+}
+
+#[derive(Debug, Default)]
+pub struct PipelineTimings {
+    pub discovery: Option<Duration>,
+    pub parsing: Option<Duration>,
+    pub semantic: Option<Duration>,
+    pub validation: Option<Duration>,
+    pub rendering: Option<Duration>,
+    pub planning: Option<Duration>,
+    pub commit: Option<Duration>,
+    pub total: Duration,
+}
+
+#[derive(Debug)]
+pub struct PipelineFailure {
+    pub error: AppError,
+    pub timings: Box<PipelineTimings>,
+}
+
+impl From<PipelineFailure> for AppError {
+    fn from(f: PipelineFailure) -> Self {
+        f.error
+    }
+}
+
+pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
+    let started = Instant::now();
+    let mut timings = PipelineTimings::default();
+    let discovered = match timed(&mut timings.discovery, || project::discover(root)) {
+        Ok(v) => v,
+        Err(e) => return failure(e.into(), started, timings),
+    };
+    let mut diagnostics = vec![];
+    let content = timed(&mut timings.parsing, || {
+        parse_content(&discovered.content, &mut diagnostics)
+    });
+    let template = match project::read_text(&discovered.presentation) {
+        Ok(v) => v,
+        Err(e) => return failure(e.into(), started, timings),
+    };
+    let publication = timed(&mut timings.semantic, || Publication {
+        root: root.into(),
+        content,
+        presentation: crate::content::Presentation {
+            source: SourceFile {
+                path: discovered.presentation.clone(),
+                text: template.clone().into(),
+            },
+            template,
+        },
+        assets: vec![],
+    });
+    diagnostics.extend(timed(&mut timings.validation, || {
+        crate::validate::publication(&publication)
+    }));
+    let rendered = timed(&mut timings.rendering, || {
+        render_pages(&publication, &mut diagnostics)
+    });
+    sort_diagnostics(&mut diagnostics);
+    if !diagnostics.is_empty() {
+        return failure(
+            AppError::InvalidPublication(diagnostics),
+            started,
+            timings,
+        );
+    }
+    let output = match timed(&mut timings.planning, || {
+        crate::output::plan_html(rendered)
+    }) {
+        Ok(v) => v,
+        Err(e) => return failure(e, started, timings),
+    };
+    timings.total = started.elapsed();
+    Ok(PipelineSuccess {
+        publication,
+        output,
+        timings,
+    })
+}
+
+fn parse_content(
+    discovered: &[project::DiscoveredContent],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Vec<crate::content::Content> {
+    let mut content = vec![];
+    for file in discovered {
+        match project::read_text(&file.path) {
+            Ok(text) => match crate::content::parse(
+                &file.relative_path,
+                SourceFile {
+                    path: file.path.clone(),
+                    text: text.into(),
+                },
+            ) {
+                Ok(item) => content.push(item),
+                Err(d) => diagnostics.push(*d),
+            },
+            Err(e) => diagnostics.push(environment_diagnostic(e)),
+        }
+    }
+    content
+}
+
+fn render_pages(
+    publication: &Publication,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Vec<(String, PathBuf, crate::content::Address)> {
+    let mut pages = vec![];
+    for content in &publication.content {
+        let (path, template) = match resolve_presentation(publication, content) {
+            Ok(v) => v,
+            Err(d) => {
+                diagnostics.push(d);
+                continue;
+            }
+        };
+        match crate::render::page(content, &path, &template) {
+            Ok(html) => pages.push((
+                html,
+                content.source.path.clone(),
+                content.address.clone(),
+            )),
+            Err(d) => diagnostics.push(*d),
+        }
+    }
+    pages
+}
+
+fn resolve_presentation(
+    publication: &Publication,
+    content: &crate::content::Content,
+) -> Result<(PathBuf, String), Diagnostic> {
+    let Some(selection) = &content.presentation else {
+        return Ok((
+            publication.presentation.source.path.clone(),
+            publication.presentation.template.clone(),
+        ));
+    };
+    let name = &selection.value;
+    if name.is_empty() || name.contains('/') || name.contains('\\') || name == "." || name == ".." {
+        return Err(presentation_diagnostic(
+            content,
+            "Invalid presentation selection",
+            format!("`{name}` is not a presentation name."),
+            "a presentation name such as article",
+        ));
+    }
+    let path = publication
+        .root
+        .join("presentation")
+        .join(format!("{name}.html"));
+    match project::read_text(&path) {
+        Ok(template) => Ok((path, template)),
+        Err(_) => Err(presentation_diagnostic(
+            content,
+            "Presentation not found",
+            format!("This content selects `{name}`, but presentation/{name}.html does not exist."),
+            "an existing file in presentation/",
+        )),
+    }
+}
+
+fn presentation_diagnostic(
+    content: &crate::content::Content,
+    summary: &str,
+    explanation: String,
+    expected: &str,
+) -> Diagnostic {
+    let span = content.presentation.as_ref().and_then(|p| p.span.as_ref());
+    Diagnostic {
+        severity: Severity::Error,
+        code: DiagnosticCode("PRESENTATION001"),
+        summary: summary.into(),
+        explanation: Some(explanation),
+        primary: Some(SourceLabel {
+            path: content.source.path.clone(),
+            span: span.map(|s| s.bytes.clone()),
+            source: Some(content.source.clone()),
+            message: Some("this content selects the presentation".into()),
+        }),
+        related: vec![],
+        object: Some(SemanticObject::Content {
+            address: Some(content.address.as_path().into()),
+        }),
+        expected: Some(expected.into()),
+        help: Some(
+            "Create the selected presentation file or remove the presentation attribute to use page.html."
+                .into(),
+        ),
+    }
+}
+
+fn environment_diagnostic(error: project::EnvironmentError) -> Diagnostic {
+    Diagnostic {
+        severity: Severity::Error,
+        code: DiagnosticCode("PROJECT001"),
+        summary: "Invalid project structure".into(),
+        explanation: Some(error.to_string()),
+        primary: None,
+        related: vec![],
+        object: Some(SemanticObject::Publication),
+        expected: Some("the required content and presentation files".into()),
+        help: Some("Create the missing conventional directory or file.".into()),
+    }
+}
+
+fn sort_diagnostics(d: &mut [Diagnostic]) {
+    d.sort_by(|l, r| {
+        l.primary
+            .as_ref()
+            .map(|x| &x.path)
+            .cmp(&r.primary.as_ref().map(|x| &x.path))
+            .then(l.code.0.cmp(r.code.0))
+            .then(l.summary.cmp(&r.summary))
+    })
+}
+
+fn timed<T>(slot: &mut Option<Duration>, work: impl FnOnce() -> T) -> T {
+    let s = Instant::now();
+    let v = work();
+    *slot = Some(s.elapsed());
+    v
+}
+
+fn failure(
+    error: AppError,
+    started: Instant,
+    mut timings: PipelineTimings,
+) -> Result<PipelineSuccess, PipelineFailure> {
+    timings.total = started.elapsed();
+    Err(PipelineFailure {
+        error,
+        timings: Box::new(timings),
+    })
+}
