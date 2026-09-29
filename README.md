@@ -2,7 +2,7 @@
 
 ![Raymatic — from content to a published site without incidental complexity](assets/raymatic-hero.png)
 
-> **Website source:** [Open the Raymatic publication](https://github.com/medioalanum/raymatic/tree/main/site) · Public hosting is pending because GitHub Pages is unavailable on the current repository plan.
+> **Live website:** [Open the official Raymatic site](https://medioalanum.github.io/raymatic/)
 
 Raymatic is a small file-based publishing tool for turning content and presentation intent into a deterministic static publication. It explores how much incidental publishing machinery a tool can own while keeping the author's files, presentation choices, and deliberate deviations visible.
 

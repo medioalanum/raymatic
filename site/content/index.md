@@ -2,7 +2,7 @@
 title = "Static publishing without managing an SSG"
 +++
 
-<section class="hero" aria-labelledby="hero-title"><div class="eyebrow">/ raymatic</div><h1 id="hero-title">Raymatic</h1><p class="sub">Static publishing without managing an SSG.</p><p class="desc">Write content.<br>Raymatic handles the publishing machinery.</p><div class="actions"><a class="button primary" href="docs/index.html">Get started →</a><a class="button" href="docs/index.html#writing-content">Documentation</a><a href="https://github.com/medioalanum/raymatic">GitHub ↗</a></div></section>
+<section class="hero" aria-labelledby="hero-title"><div class="eyebrow">/ raymatic</div><h1 id="hero-title">Raymatic</h1><p class="sub">Static publishing without managing an SSG.</p><p class="desc">Write content.<br>Raymatic handles the publishing machinery.</p><div class="actions"><a class="button primary" href="/raymatic/docs/index.html">Get started →</a><a class="button" href="/raymatic/docs/index.html#writing-content">Documentation</a><a href="https://github.com/medioalanum/raymatic">GitHub ↗</a></div></section>
 
 <section aria-label="Product demonstration"><p class="kicker">01 — Create &amp; preview</p><div class="terminal"><div class="bar">~/projects</div><pre>$ ray new my-site
 Created publication at ./my-site
