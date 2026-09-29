@@ -77,15 +77,9 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
     });
     sort_diagnostics(&mut diagnostics);
     if !diagnostics.is_empty() {
-        return failure(
-            AppError::InvalidPublication(diagnostics),
-            started,
-            timings,
-        );
+        return failure(AppError::InvalidPublication(diagnostics), started, timings);
     }
-    let output = match timed(&mut timings.planning, || {
-        crate::output::plan_html(rendered)
-    }) {
+    let output = match timed(&mut timings.planning, || crate::output::plan_html(rendered)) {
         Ok(v) => v,
         Err(e) => return failure(e, started, timings),
     };
@@ -134,11 +128,7 @@ fn render_pages(
             }
         };
         match crate::render::page(content, &path, &template) {
-            Ok(html) => pages.push((
-                html,
-                content.source.path.clone(),
-                content.address.clone(),
-            )),
+            Ok(html) => pages.push((html, content.source.path.clone(), content.address.clone())),
             Err(d) => diagnostics.push(*d),
         }
     }
