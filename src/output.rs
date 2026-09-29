@@ -1,5 +1,5 @@
 //! Complete output plans are validated before a staged production commit.
-use crate::{AppError, content::Address, project::EnvironmentError};
+use crate::{AppError, content::{Address, Asset}, project::EnvironmentError};
 use std::{
     collections::BTreeSet,
     fs,
@@ -31,19 +31,35 @@ pub enum OutputOrigin {
     Generated,
 }
 
-pub fn plan_html(pages: Vec<(String, PathBuf, Address)>) -> Result<OutputPlan, AppError> {
-    let plan = OutputPlan {
-        entries: pages
-            .into_iter()
-            .map(|(content, source, address)| OutputEntry {
-                relative_path: output_path(&address),
-                content: OutputContent::Bytes(content.into_bytes()),
-                origin: OutputOrigin::Content { source, address },
-            })
-            .collect(),
-    };
+pub fn plan(
+    pages: Vec<(String, PathBuf, Address)>,
+    assets: &[Asset],
+) -> Result<OutputPlan, AppError> {
+    let mut entries: Vec<OutputEntry> = pages
+        .into_iter()
+        .map(|(content, source, address)| OutputEntry {
+            relative_path: output_path(&address),
+            content: OutputContent::Bytes(content.into_bytes()),
+            origin: OutputOrigin::Content { source, address },
+        })
+        .collect();
+    entries.extend(assets.iter().map(|asset| OutputEntry {
+        relative_path: asset.relative_path.clone(),
+        content: OutputContent::CopyFile {
+            source: asset.source.clone(),
+        },
+        origin: OutputOrigin::Asset {
+            source: asset.source.clone(),
+        },
+    }));
+    entries.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    let plan = OutputPlan { entries };
     validate(&plan)?;
     Ok(plan)
+}
+
+pub fn plan_html(pages: Vec<(String, PathBuf, Address)>) -> Result<OutputPlan, AppError> {
+    plan(pages, &[])
 }
 
 fn output_path(address: &Address) -> PathBuf {
