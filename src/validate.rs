@@ -17,30 +17,36 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
     for (address, content) in addresses {
         if content.len() > 1 {
             for item in content {
+                let explicit = item.address_span.as_ref();
                 diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     code: DiagnosticCode("ADDR001"),
                     summary: "Route collision".into(),
                     explanation: Some(format!(
-                        "Multiple content files derive the address {address}."
+                        "Multiple content files resolve to the address {address}."
                     )),
                     primary: Some(SourceLabel {
                         path: item.source.path.clone(),
-                        span: item
-                            .attributes
-                            .title
-                            .span
-                            .as_ref()
-                            .map(|span| span.bytes.clone()),
+                        span: explicit
+                            .map(|span| span.bytes.clone())
+                            .or_else(|| item.attributes.title.span.as_ref().map(|span| span.bytes.clone())),
                         source: Some(item.source.clone()),
-                        message: Some("this content derives the colliding address".into()),
+                        message: Some(if explicit.is_some() {
+                            "this content explicitly selects the colliding address".into()
+                        } else {
+                            "this content derives the colliding address".into()
+                        }),
                     }),
                     related: vec![],
                     object: Some(SemanticObject::Content {
                         address: Some(item.address.clone()),
                     }),
                     expected: Some("a unique address for every content file".into()),
-                    help: Some("Rename or move one of the colliding content files.".into()),
+                    help: Some(if explicit.is_some() {
+                        "Choose a different explicit address or remove it to use the path-derived default.".into()
+                    } else {
+                        "Rename or move this content, or give it a different explicit address.".into()
+                    }),
                 });
             }
         }
