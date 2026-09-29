@@ -26,9 +26,15 @@ pub struct DiscoveredContent {
     pub relative_path: PathBuf,
 }
 
+pub struct DiscoveredAsset {
+    pub path: PathBuf,
+    pub relative_path: PathBuf,
+}
+
 pub struct DiscoveredSources {
     pub content: Vec<DiscoveredContent>,
     pub presentation: PathBuf,
+    pub assets: Vec<DiscoveredAsset>,
 }
 
 pub fn discover(root: &Path) -> Result<DiscoveredSources, EnvironmentError> {
@@ -37,9 +43,18 @@ pub fn discover(root: &Path) -> Result<DiscoveredSources, EnvironmentError> {
     let mut content = Vec::new();
     discover_markdown(&content_root, &content_root, &mut content)?;
     content.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+
+    let assets_root = root.join("assets");
+    let mut assets = Vec::new();
+    if assets_root.exists() {
+        discover_assets(&assets_root, &assets_root, &mut assets)?;
+        assets.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+    }
+
     Ok(DiscoveredSources {
         content,
         presentation: root.join("presentation/page.html"),
+        assets,
     })
 }
 
@@ -71,6 +86,42 @@ fn discover_markdown(
                 relative_path: path
                     .strip_prefix(root)
                     .expect("discovered under content root")
+                    .into(),
+                path,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn discover_assets(
+    root: &Path,
+    directory: &Path,
+    output: &mut Vec<DiscoveredAsset>,
+) -> Result<(), EnvironmentError> {
+    for entry in std::fs::read_dir(directory).map_err(|source| EnvironmentError::Inspect {
+        path: directory.into(),
+        source,
+    })? {
+        let entry = entry.map_err(|source| EnvironmentError::Inspect {
+            path: directory.into(),
+            source,
+        })?;
+        let path = entry.path();
+        if entry
+            .file_type()
+            .map_err(|source| EnvironmentError::Inspect {
+                path: path.clone(),
+                source,
+            })?
+            .is_dir()
+        {
+            discover_assets(root, &path, output)?;
+        } else {
+            output.push(DiscoveredAsset {
+                relative_path: path
+                    .strip_prefix(root)
+                    .expect("discovered under assets root")
                     .into(),
                 path,
             });
@@ -153,7 +204,7 @@ fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
         ),
         (
             "README.md",
-            "# Raymatic publication\n\n- Write pages in `content/`.\n- Change the shared HTML in `presentation/page.html`.\n- Run `ray dev` for a local preview.\n- Run `ray check` before `ray build`.\n- Find the production site in `output/` after `ray build`.\n",
+            "# Raymatic publication\n\n- Write pages in `content/`.\n- Change the shared HTML in `presentation/page.html`.\n- Put static files in `assets/`; their paths are preserved in the generated site.\n- Run `ray dev` for a local preview.\n- Run `ray check` before `ray build`.\n- Find the production site in `output/` after `ray build`.\n",
         ),
     ] {
         let path = root.join(relative_path);
