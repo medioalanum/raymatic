@@ -11,7 +11,7 @@ title = "Static publishing without managing an SSG"
 
 <section>
   <div class="eyebrow">create → write → preview → publish</div>
-  <h2>A new publication is a small set of files. Nothing else to wire together.</h2>
+  <h2>A new publication is a small set of files.<br>Nothing else to wire together.</h2>
   <div class="terminal"><div class="terminal-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><pre>$ ray new my-site
 Created publication at ./my-site
 

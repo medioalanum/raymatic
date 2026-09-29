@@ -45,3 +45,26 @@ The model is explainable when the public website reflects the released behavior 
 
 ### Recommendation
 Keep as-is.
+
+## Finding
+
+### Task
+Reproduce the Lovable reference's theme control while keeping the site static.
+
+### Expected
+The visual treatment should offer the same light/dark choice without introducing a JavaScript application or build pipeline.
+
+### Actual
+The original first pass was dark-only and omitted the reference control.
+
+### Workaround
+The presentation now uses an accessible checkbox/label and native CSS `:has()` variables to switch between dark and light tokens without JavaScript.
+
+### Classification
+Website implementation issue
+
+### Product implication
+The existing presentation boundary can express this interaction as static HTML/CSS; no Raymatic capability is missing.
+
+### Recommendation
+Keep as-is.

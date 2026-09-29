@@ -17,7 +17,10 @@
     header { border-bottom:1px solid var(--line); }
     .nav { display:flex; align-items:center; justify-content:space-between; min-height:76px; gap:24px; }
     .brand { color:var(--ink); font-size:1.05rem; font-weight:700; letter-spacing:.08em; }
-    .nav-links { display:flex; gap:25px; font-size:.8rem; }
+    .nav-links { display:flex; align-items:center; gap:25px; font-size:.8rem; }
+    .theme-toggle { position:absolute; opacity:0; pointer-events:none; }
+    .theme-label { cursor:pointer; color:var(--muted); }
+    body:has(.theme-toggle:checked) { --bg:#f2efe8; --panel:#fffdf8; --panel-2:#f5f1e8; --ink:#171714; --muted:#64645d; --line:#d5d0c5; --accent:#a66c16; --accent-2:#80500b; --code:#ebe7dd; }
     main { overflow:hidden; }
     .hero { padding:110px 0 95px; text-align:center; }
     .eyebrow { color:var(--accent); font-size:.75rem; letter-spacing:.18em; text-transform:uppercase; }
@@ -61,7 +64,7 @@
   </style>
 </head>
 <body>
-  <header><div class="shell nav"><a class="brand" href="index.html">/raymatic</a><nav class="nav-links" aria-label="Primary"><a href="docs/index.html">Docs</a><a href="philosophy/index.html">Philosophy</a><a href="https://github.com/medioalanum/raymatic">GitHub ↗</a></nav></div></header>
+  <header><div class="shell nav"><a class="brand" href="index.html">/raymatic</a><nav class="nav-links" aria-label="Primary"><a href="docs/index.html">Docs</a><a href="philosophy/index.html">Philosophy</a><a href="https://github.com/medioalanum/raymatic">GitHub ↗</a><input class="theme-toggle" id="theme-toggle" type="checkbox"><label class="theme-label" for="theme-toggle">Switch to light theme</label></nav></div></header>
   <main class="shell">{{ body }}</main>
   <footer><div class="shell footer-row"><strong>/raymatic</strong><p>Static publishing without managing an SSG.</p></div></footer>
 </body>
