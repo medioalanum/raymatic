@@ -56,7 +56,8 @@ fn default_presentation_remains_page_html_without_configuration() {
     let result = evaluate(root.path()).unwrap();
     assert!(result.publication.content[0].presentation.is_none());
     let rendered = rendered_html(&result);
-    assert!(rendered.contains("<title>An article</title>"));
+    assert!(rendered.contains("<title>Hello Raymatic</title>"));
+    assert!(rendered.contains("<h1>Hello</h1>"));
 }
 
 #[test]
