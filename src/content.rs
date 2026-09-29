@@ -10,12 +10,12 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
-    /// One-based line and Unicode scalar column; invalid UTF-8 boundaries return None.
     pub fn line_column(&self, offset: usize) -> Option<(usize, usize)> {
         let prefix = self.text.get(..offset)?;
-        let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
-        let column = prefix.rsplit('\n').next()?.chars().count() + 1;
-        Some((line, column))
+        Some((
+            prefix.bytes().filter(|b| *b == b'\n').count() + 1,
+            prefix.rsplit('\n').next()?.chars().count() + 1,
+        ))
     }
 }
 
@@ -35,40 +35,39 @@ pub struct Spanned<T> {
 pub struct Address(String);
 
 impl Address {
-    pub fn derive(source_relative_path: &std::path::Path) -> Self {
-        let mut path = source_relative_path.with_extension("");
-        if path.file_name().is_some_and(|name| name == "index") {
-            path.pop();
+    pub fn derive(p: &std::path::Path) -> Self {
+        let mut p = p.with_extension("");
+        if p.file_name().is_some_and(|n| n == "index") {
+            p.pop();
         }
-        let segment = path.to_string_lossy().replace('\\', "/");
-        if segment.is_empty() {
+        let s = p.to_string_lossy().replace('\\', "/");
+        if s.is_empty() {
             Self("/".into())
         } else {
-            Self(format!("/{segment}/"))
+            Self(format!("/{s}/"))
         }
     }
 
-    fn explicit(value: String) -> Result<Self, &'static str> {
-        if value == "/" {
-            return Ok(Self(value));
+    fn explicit(v: String) -> Result<Self, &'static str> {
+        if v == "/" {
+            return Ok(Self(v));
         }
-        if !value.starts_with('/') || !value.ends_with('/') {
+        if !v.starts_with('/') || !v.ends_with('/') {
             return Err("an address must start and end with /");
         }
-        if value.contains("//") {
+        if v.contains("//") {
             return Err("an address cannot contain empty path segments");
         }
-        if value.contains('\\') || value.contains('?') || value.contains('#') {
+        if v.contains('\\') || v.contains('?') || v.contains('#') {
             return Err("an address must contain only a public path, without \\, ? or #");
         }
-        if value
-            .trim_matches('/')
+        if v.trim_matches('/')
             .split('/')
-            .any(|segment| segment == "." || segment == "..")
+            .any(|s| s == "." || s == "..")
         {
             return Err("an address cannot contain . or .. path segments");
         }
-        Ok(Self(value))
+        Ok(Self(v))
     }
 
     pub fn as_path(&self) -> &str {
@@ -84,25 +83,23 @@ struct FrontMatter {
     category: Option<String>,
     summary: Option<String>,
     address: Option<String>,
+    presentation: Option<String>,
 }
 
-pub fn parse(
-    source_relative_path: &std::path::Path,
-    source: SourceFile,
-) -> Result<Content, Box<Diagnostic>> {
-    let (front_matter, body_range) = split_front_matter(&source)?;
-    let attributes: FrontMatter = toml::from_str(front_matter).map_err(|error| {
+pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, Box<Diagnostic>> {
+    let (fm, body_range) = split_front_matter(&source)?;
+    let a: FrontMatter = toml::from_str(fm).map_err(|e| {
         Box::new(diagnostic(
             "CONTENT001",
             "Malformed front matter",
             &source,
-            0..front_matter.len().min(source.text.len()),
-            Some(error.to_string()),
+            0..fm.len().min(source.text.len()),
+            Some(e.to_string()),
             Some("valid TOML using supported publication attributes"),
             Some("Correct the front matter syntax or remove unsupported attributes."),
         ))
     })?;
-    let title = attributes.title.ok_or_else(|| {
+    let title = a.title.ok_or_else(|| {
         Box::new(diagnostic(
             "CONTENT002",
             "Missing required attribute: title",
@@ -113,40 +110,42 @@ pub fn parse(
             Some("Add a title to the front matter."),
         ))
     })?;
-    let (address, address_span) = match attributes.address {
-        Some(value) => {
+    let (address, address_span) = match a.address {
+        Some(v) => {
             let span = attribute_span("address", &source);
-            let address = Address::explicit(value).map_err(|reason| {
+            let address = Address::explicit(v).map_err(|r| {
                 Box::new(diagnostic(
                     "ADDR002",
                     "Invalid explicit address",
                     &source,
                     span.bytes.clone(),
-                    Some(reason.into()),
+                    Some(r.into()),
                     Some("/ for the home page, or a canonical path such as /notes/rust/"),
-                    Some("Use a leading and trailing slash and remove query, fragment, or traversal segments."),
+                    Some(
+                        "Use a leading and trailing slash and remove query, fragment, or traversal segments.",
+                    ),
                 ))
             })?;
             (address, Some(span))
         }
-        None => (Address::derive(source_relative_path), None),
+        None => (Address::derive(relative), None),
     };
+    let presentation = a
+        .presentation
+        .map(|v| spanned_attribute(v, "presentation", &source));
     Ok(Content {
         source: source.clone(),
         attributes: Attributes {
             title: spanned_attribute(title, "title", &source),
-            date: attributes
-                .date
-                .map(|value| spanned_attribute(value, "date", &source)),
-            category: attributes
+            date: a.date.map(|v| spanned_attribute(v, "date", &source)),
+            category: a
                 .category
-                .map(|value| spanned_attribute(value, "category", &source)),
-            summary: attributes
-                .summary
-                .map(|value| spanned_attribute(value, "summary", &source)),
+                .map(|v| spanned_attribute(v, "category", &source)),
+            summary: a.summary.map(|v| spanned_attribute(v, "summary", &source)),
         },
         address,
         address_span,
+        presentation,
         references: references(&source, body_range.clone()),
         body: MarkdownBody { source, body_range },
     })
@@ -160,10 +159,10 @@ fn attribute_span(name: &str, source: &SourceFile) -> SourceSpan {
     }
 }
 
-fn spanned_attribute(value: String, name: &str, source: &SourceFile) -> Spanned<String> {
+fn spanned_attribute(v: String, n: &str, s: &SourceFile) -> Spanned<String> {
     Spanned {
-        value,
-        span: Some(attribute_span(name, source)),
+        value: v,
+        span: Some(attribute_span(n, s)),
     }
 }
 
@@ -172,32 +171,32 @@ fn references(source: &SourceFile, body_range: Range<usize>) -> Vec<InternalRefe
         .text
         .get(body_range.clone())
         .expect("body range belongs to source");
-    let mut references = Vec::new();
+    let mut out = vec![];
     let mut start = 0;
-    while let Some(open_relative) = body[start..].find("](") {
-        let target_start = start + open_relative + 2;
-        let Some(close_relative) = body[target_start..].find(')') else {
+    while let Some(o) = body[start..].find("](") {
+        let ts = start + o + 2;
+        let Some(c) = body[ts..].find(')') else {
             break;
         };
-        let target_end = target_start + close_relative;
-        let target = &body[target_start..target_end];
+        let te = ts + c;
+        let target = &body[ts..te];
         if target.starts_with('/') {
-            references.push(InternalReference {
+            out.push(InternalReference {
                 target: target.into(),
                 span: SourceSpan {
                     source: source.clone(),
-                    bytes: body_range.start + target_start..body_range.start + target_end,
+                    bytes: body_range.start + ts..body_range.start + te,
                 },
             });
         }
-        start = target_end + 1;
+        start = te + 1;
     }
-    references
+    out
 }
 
 fn split_front_matter(source: &SourceFile) -> Result<(&str, Range<usize>), Box<Diagnostic>> {
     let text = &source.text;
-    let Some(after_opening) = text.strip_prefix("+++\n") else {
+    let Some(after) = text.strip_prefix("+++\n") else {
         return Err(Box::new(diagnostic(
             "CONTENT001",
             "Malformed front matter",
@@ -208,10 +207,10 @@ fn split_front_matter(source: &SourceFile) -> Result<(&str, Range<usize>), Box<D
             Some("Start the file with +++."),
         )));
     };
-    if after_opening.starts_with("+++\n") {
+    if after.starts_with("+++\n") {
         return Ok(("", 8..text.len()));
     }
-    let Some(closing_relative) = after_opening.find("\n+++") else {
+    let Some(close) = after.find("\n+++") else {
         return Err(Box::new(diagnostic(
             "CONTENT001",
             "Malformed front matter",
@@ -222,10 +221,9 @@ fn split_front_matter(source: &SourceFile) -> Result<(&str, Range<usize>), Box<D
             Some("Add a closing +++ line."),
         )));
     };
-    let front_start = 4;
-    let front_end = front_start + closing_relative;
-    let body_start = front_end + 5;
-    Ok((&text[front_start..front_end], body_start..text.len()))
+    let fs = 4;
+    let fe = fs + close;
+    Ok((&text[fs..fe], fe + 5..text.len()))
 }
 
 fn diagnostic(
@@ -269,6 +267,7 @@ pub struct Content {
     pub attributes: Attributes,
     pub address: Address,
     pub address_span: Option<SourceSpan>,
+    pub presentation: Option<Spanned<String>>,
     pub body: MarkdownBody,
     pub references: Vec<InternalReference>,
 }
@@ -301,7 +300,6 @@ pub struct Presentation {
 
 #[derive(Debug)]
 pub struct Asset {
-    /// Assets may be binary, so provenance retains their path without decoding text.
     pub source: PathBuf,
     pub relative_path: PathBuf,
 }

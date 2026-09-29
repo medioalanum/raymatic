@@ -51,6 +51,77 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
 }
 
 #[test]
+fn default_presentation_remains_page_html_without_configuration() {
+    let root = fixture("valid");
+    let result = evaluate(root.path()).unwrap();
+    assert!(result.publication.content[0].presentation.is_none());
+    let rendered = rendered_html(&result);
+    assert!(rendered.contains("<title>Hello Raymatic</title>"));
+    assert!(rendered.contains("<h1>Hello</h1>"));
+}
+
+#[test]
+fn explicit_presentation_selects_named_template() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\npresentation = \"article\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/article.html"),
+        "<article data-presentation=\"article\">{{ title }}|{{ body }}</article>",
+    )
+    .unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    assert_eq!(
+        result.publication.content[0]
+            .presentation
+            .as_ref()
+            .unwrap()
+            .value,
+        "article"
+    );
+    assert!(
+        rendered_html(&result)
+            .contains("<article data-presentation=\"article\">An article|<p>Hello.</p>")
+    );
+}
+
+#[test]
+fn missing_explicit_presentation_is_source_aware() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\npresentation = \"missing\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+
+    let failure = evaluate(root.path()).unwrap_err();
+    let AppError::InvalidPublication(diagnostics) = failure.error else {
+        panic!("expected invalid publication");
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.0 == "PRESENTATION001")
+        .expect("expected presentation diagnostic");
+    assert_eq!(diagnostic.summary, "Presentation not found");
+    assert_eq!(
+        diagnostic.primary.as_ref().unwrap().path,
+        root.path().join("content/index.md")
+    );
+    assert!(diagnostic.primary.as_ref().unwrap().span.is_some());
+    assert!(
+        diagnostic
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("presentation/missing.html")
+    );
+}
+
+#[test]
 fn explicit_address_overrides_the_path_derived_default() {
     let root = fixture("valid");
     fs::write(
@@ -116,12 +187,9 @@ fn publication_attributes_are_optional_and_reach_the_presentation() {
         "A concise summary."
     );
 
-    let rendered = match &result.output.entries[0].content {
-        raymatic::output::OutputContent::Bytes(bytes) => String::from_utf8(bytes.clone()).unwrap(),
-        raymatic::output::OutputContent::CopyFile { .. } => panic!("expected rendered HTML"),
-    };
     assert!(
-        rendered.contains("An article|2026-09-29|Engineering|A concise summary.|<p>Hello.</p>")
+        rendered_html(&result)
+            .contains("An article|2026-09-29|Engineering|A concise summary.|<p>Hello.</p>")
     );
 }
 
@@ -143,6 +211,13 @@ fn unsupported_front_matter_is_rejected_instead_of_silently_ignored() {
             .iter()
             .any(|diagnostic| diagnostic.code.0 == "CONTENT001")
     );
+}
+
+fn rendered_html(result: &raymatic::pipeline::PipelineSuccess) -> String {
+    match &result.output.entries[0].content {
+        raymatic::output::OutputContent::Bytes(bytes) => String::from_utf8(bytes.clone()).unwrap(),
+        raymatic::output::OutputContent::CopyFile { .. } => panic!("expected rendered HTML"),
+    }
 }
 
 fn fixture(name: &str) -> tempfile::TempDir {

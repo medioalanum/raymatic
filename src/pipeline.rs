@@ -2,12 +2,12 @@
 use crate::{
     AppError,
     content::{Publication, SourceFile},
-    diagnostic::Diagnostic,
+    diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
     output::OutputPlan,
     project,
 };
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -20,7 +20,6 @@ pub struct PipelineSuccess {
 
 #[derive(Debug, Default)]
 pub struct PipelineTimings {
-    // None means the stage has not run; it is not a measured zero duration.
     pub discovery: Option<Duration>,
     pub parsing: Option<Duration>,
     pub semantic: Option<Duration>,
@@ -38,26 +37,25 @@ pub struct PipelineFailure {
 }
 
 impl From<PipelineFailure> for AppError {
-    fn from(failure: PipelineFailure) -> Self {
-        failure.error
+    fn from(f: PipelineFailure) -> Self {
+        f.error
     }
 }
 
 pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
     let started = Instant::now();
     let mut timings = PipelineTimings::default();
-    let discovered = timed(&mut timings.discovery, || project::discover(root));
-    let discovered = match discovered {
-        Ok(value) => value,
-        Err(error) => return failure(error.into(), started, timings),
+    let discovered = match timed(&mut timings.discovery, || project::discover(root)) {
+        Ok(v) => v,
+        Err(e) => return failure(e.into(), started, timings),
     };
-    let mut diagnostics = Vec::new();
+    let mut diagnostics = vec![];
     let content = timed(&mut timings.parsing, || {
         parse_content(&discovered.content, &mut diagnostics)
     });
     let template = match project::read_text(&discovered.presentation) {
-        Ok(value) => value,
-        Err(error) => return failure(error.into(), started, timings),
+        Ok(v) => v,
+        Err(e) => return failure(e.into(), started, timings),
     };
     let publication = timed(&mut timings.semantic, || Publication {
         root: root.into(),
@@ -82,8 +80,8 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
         return failure(AppError::InvalidPublication(diagnostics), started, timings);
     }
     let output = match timed(&mut timings.planning, || crate::output::plan_html(rendered)) {
-        Ok(value) => value,
-        Err(error) => return failure(error, started, timings),
+        Ok(v) => v,
+        Err(e) => return failure(e, started, timings),
     };
     timings.total = started.elapsed();
     Ok(PipelineSuccess {
@@ -97,7 +95,7 @@ fn parse_content(
     discovered: &[project::DiscoveredContent],
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Vec<crate::content::Content> {
-    let mut content = Vec::new();
+    let mut content = vec![];
     for file in discovered {
         match project::read_text(&file.path) {
             Ok(text) => match crate::content::parse(
@@ -108,9 +106,9 @@ fn parse_content(
                 },
             ) {
                 Ok(item) => content.push(item),
-                Err(diagnostic) => diagnostics.push(*diagnostic),
+                Err(d) => diagnostics.push(*d),
             },
-            Err(error) => diagnostics.push(environment_diagnostic(error)),
+            Err(e) => diagnostics.push(environment_diagnostic(e)),
         }
     }
     content
@@ -119,52 +117,120 @@ fn parse_content(
 fn render_pages(
     publication: &Publication,
     diagnostics: &mut Vec<Diagnostic>,
-) -> Vec<(String, std::path::PathBuf, crate::content::Address)> {
-    let mut pages = Vec::new();
+) -> Vec<(String, PathBuf, crate::content::Address)> {
+    let mut pages = vec![];
     for content in &publication.content {
-        match crate::render::page(
-            content,
-            &publication.presentation.source.path,
-            &publication.presentation.template,
-        ) {
+        let (path, template) = match resolve_presentation(publication, content) {
+            Ok(v) => v,
+            Err(d) => {
+                diagnostics.push(*d);
+                continue;
+            }
+        };
+        match crate::render::page(content, &path, &template) {
             Ok(html) => pages.push((html, content.source.path.clone(), content.address.clone())),
-            Err(diagnostic) => diagnostics.push(*diagnostic),
+            Err(d) => diagnostics.push(*d),
         }
     }
     pages
 }
 
+fn resolve_presentation(
+    publication: &Publication,
+    content: &crate::content::Content,
+) -> Result<(PathBuf, String), Box<Diagnostic>> {
+    let Some(selection) = &content.presentation else {
+        return Ok((
+            publication.presentation.source.path.clone(),
+            publication.presentation.template.clone(),
+        ));
+    };
+    let name = &selection.value;
+    if name.is_empty() || name.contains('/') || name.contains('\\') || name == "." || name == ".." {
+        return Err(Box::new(presentation_diagnostic(
+            content,
+            "Invalid presentation selection",
+            format!("`{name}` is not a presentation name."),
+            "a presentation name such as article",
+        )));
+    }
+    let path = publication
+        .root
+        .join("presentation")
+        .join(format!("{name}.html"));
+    match project::read_text(&path) {
+        Ok(template) => Ok((path, template)),
+        Err(_) => Err(Box::new(presentation_diagnostic(
+            content,
+            "Presentation not found",
+            format!("This content selects `{name}`, but presentation/{name}.html does not exist."),
+            "an existing file in presentation/",
+        ))),
+    }
+}
+
+fn presentation_diagnostic(
+    content: &crate::content::Content,
+    summary: &str,
+    explanation: String,
+    expected: &str,
+) -> Diagnostic {
+    let span = content.presentation.as_ref().and_then(|p| p.span.as_ref());
+    Diagnostic {
+        severity: Severity::Error,
+        code: DiagnosticCode("PRESENTATION001"),
+        summary: summary.into(),
+        explanation: Some(explanation),
+        primary: Some(SourceLabel {
+            path: content.source.path.clone(),
+            span: span.map(|s| s.bytes.clone()),
+            source: Some(content.source.clone()),
+            message: Some("this content selects the presentation".into()),
+        }),
+        related: vec![],
+        object: Some(SemanticObject::Content {
+            address: Some(content.address.clone()),
+        }),
+        expected: Some(expected.into()),
+        help: Some(
+            "Create the selected presentation file or remove the presentation attribute to use page.html."
+                .into(),
+        ),
+    }
+}
+
 fn environment_diagnostic(error: project::EnvironmentError) -> Diagnostic {
     Diagnostic {
-        severity: crate::diagnostic::Severity::Error,
-        code: crate::diagnostic::DiagnosticCode("PROJECT001"),
+        severity: Severity::Error,
+        code: DiagnosticCode("PROJECT001"),
         summary: "Invalid project structure".into(),
         explanation: Some(error.to_string()),
         primary: None,
         related: vec![],
-        object: Some(crate::diagnostic::SemanticObject::Publication),
+        object: Some(SemanticObject::Publication),
         expected: Some("the required content and presentation files".into()),
         help: Some("Create the missing conventional directory or file.".into()),
     }
 }
 
-fn sort_diagnostics(diagnostics: &mut [Diagnostic]) {
-    diagnostics.sort_by(|left, right| {
-        let left_path = left.primary.as_ref().map(|label| &label.path);
-        let right_path = right.primary.as_ref().map(|label| &label.path);
-        left_path
-            .cmp(&right_path)
-            .then(left.code.0.cmp(right.code.0))
-            .then(left.summary.cmp(&right.summary))
-    });
+fn sort_diagnostics(d: &mut [Diagnostic]) {
+    d.sort_by(|l, r| {
+        l.primary
+            .as_ref()
+            .map(|x| &x.path)
+            .cmp(&r.primary.as_ref().map(|x| &x.path))
+            .then(l.code.0.cmp(r.code.0))
+            .then(l.summary.cmp(&r.summary))
+    })
 }
 
 fn timed<T>(slot: &mut Option<Duration>, work: impl FnOnce() -> T) -> T {
-    let started = Instant::now();
-    let value = work();
-    *slot = Some(started.elapsed());
-    value
+    let s = Instant::now();
+    let v = work();
+    *slot = Some(s.elapsed());
+    v
 }
+
 fn failure(
     error: AppError,
     started: Instant,
