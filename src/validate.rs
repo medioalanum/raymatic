@@ -58,14 +58,15 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
         .collect();
     for content in &publication.content {
         for reference in &content.references {
-            if !addresses.contains(reference.target.as_str()) {
+            if !addresses.contains(reference.target.address()) {
+                let target = reference.target.as_written();
                 diagnostics.push(Diagnostic {
                     severity: Severity::Error,
                     code: DiagnosticCode("REF001"),
                     summary: "Internal reference does not resolve".into(),
                     explanation: Some(format!(
-                        "This content links to {} but no content produces that address.",
-                        reference.target
+                        "This content links to {target} but no content produces the address {}.",
+                        reference.target.address()
                     )),
                     primary: Some(SourceLabel {
                         path: reference.span.source.path.clone(),
@@ -74,9 +75,7 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
                         message: Some("unknown internal target".into()),
                     }),
                     related: vec![],
-                    object: Some(SemanticObject::Reference {
-                        target: reference.target.clone(),
-                    }),
+                    object: Some(SemanticObject::Reference { target }),
                     expected: Some("an address produced by another content item".into()),
                     help: Some(
                         "Correct the target or add content that produces this address.".into(),
