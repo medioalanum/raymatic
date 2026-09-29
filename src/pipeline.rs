@@ -1,7 +1,7 @@
 //! Single evaluation entry for check, build and dev. No output mutations.
 use crate::{
     AppError,
-    content::{Publication, SourceFile},
+    content::{Asset, Publication, SourceFile},
     diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
     output::OutputPlan,
     project,
@@ -67,7 +67,14 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
             },
             template,
         },
-        assets: vec![],
+        assets: discovered
+            .assets
+            .into_iter()
+            .map(|asset| Asset {
+                source: asset.path,
+                relative_path: asset.relative_path,
+            })
+            .collect(),
     });
     diagnostics.extend(timed(&mut timings.validation, || {
         crate::validate::publication(&publication)
@@ -79,7 +86,9 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
     if !diagnostics.is_empty() {
         return failure(AppError::InvalidPublication(diagnostics), started, timings);
     }
-    let output = match timed(&mut timings.planning, || crate::output::plan_html(rendered)) {
+    let output = match timed(&mut timings.planning, || {
+        crate::output::plan(rendered, &publication.assets)
+    }) {
         Ok(v) => v,
         Err(e) => return failure(e, started, timings),
     };
