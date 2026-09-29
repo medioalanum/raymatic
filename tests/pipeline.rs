@@ -82,9 +82,10 @@ fn explicit_presentation_selects_named_template() {
             .value,
         "article"
     );
-    assert!(rendered_html(&result).contains(
-        "<article data-presentation=\"article\">An article|<p>Hello.</p>"
-    ));
+    assert!(
+        rendered_html(&result)
+            .contains("<article data-presentation=\"article\">An article|<p>Hello.</p>")
+    );
 }
 
 #[test]
