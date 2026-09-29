@@ -61,7 +61,10 @@ impl Address {
         if v.contains('\\') || v.contains('?') || v.contains('#') {
             return Err("an address must contain only a public path, without \\, ? or #");
         }
-        if v.trim_matches('/').split('/').any(|s| s == "." || s == "..") {
+        if v.trim_matches('/')
+            .split('/')
+            .any(|s| s == "." || s == "..")
+        {
             return Err("an address cannot contain . or .. path segments");
         }
         Ok(Self(v))
@@ -83,10 +86,7 @@ struct FrontMatter {
     presentation: Option<String>,
 }
 
-pub fn parse(
-    relative: &std::path::Path,
-    source: SourceFile,
-) -> Result<Content, Box<Diagnostic>> {
+pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, Box<Diagnostic>> {
     let (fm, body_range) = split_front_matter(&source)?;
     let a: FrontMatter = toml::from_str(fm).map_err(|e| {
         Box::new(diagnostic(
@@ -141,9 +141,7 @@ pub fn parse(
             category: a
                 .category
                 .map(|v| spanned_attribute(v, "category", &source)),
-            summary: a
-                .summary
-                .map(|v| spanned_attribute(v, "summary", &source)),
+            summary: a.summary.map(|v| spanned_attribute(v, "summary", &source)),
         },
         address,
         address_span,
