@@ -50,6 +50,55 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
     assert_eq!(first.publication.content[0].address.as_path(), "/");
 }
 
+#[test]
+fn publication_attributes_are_optional_and_reach_the_presentation() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\ndate = \"2026-09-29\"\ncategory = \"Engineering\"\nsummary = \"A concise summary.\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ title }}|{{ date }}|{{ category }}|{{ summary }}|{{ body }}",
+    )
+    .unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    let attributes = &result.publication.content[0].attributes;
+    assert_eq!(attributes.title.value, "An article");
+    assert_eq!(attributes.date.as_ref().unwrap().value, "2026-09-29");
+    assert_eq!(attributes.category.as_ref().unwrap().value, "Engineering");
+    assert_eq!(
+        attributes.summary.as_ref().unwrap().value,
+        "A concise summary."
+    );
+
+    let rendered = match &result.output.entries[0].content {
+        raymatic::output::OutputContent::Bytes(bytes) => String::from_utf8(bytes.clone()).unwrap(),
+        raymatic::output::OutputContent::CopyFile { .. } => panic!("expected rendered HTML"),
+    };
+    assert!(rendered.contains(
+        "An article|2026-09-29|Engineering|A concise summary.|<p>Hello.</p>"
+    ));
+}
+
+#[test]
+fn unsupported_front_matter_is_rejected_instead_of_silently_ignored() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\nmagic = \"hidden machinery\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+
+    let failure = evaluate(root.path()).unwrap_err();
+    let AppError::InvalidPublication(diagnostics) = failure.error else {
+        panic!("expected invalid publication");
+    };
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.code.0 == "CONTENT001"));
+}
+
 fn fixture(name: &str) -> tempfile::TempDir {
     let root = tempfile::tempdir().unwrap();
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
