@@ -51,6 +51,48 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
 }
 
 #[test]
+fn explicit_address_overrides_the_path_derived_default() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\naddress = \"/notes/rust/\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    assert_eq!(
+        result.publication.content[0].address.as_path(),
+        "/notes/rust/"
+    );
+    assert!(result.publication.content[0].address_span.is_some());
+    assert_eq!(
+        result.output.entries[0].relative_path,
+        std::path::Path::new("notes/rust/index.html")
+    );
+}
+
+#[test]
+fn invalid_explicit_address_is_rejected_with_an_address_diagnostic() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\naddress = \"notes/../rust\"\n+++\n\nHello.\n",
+    )
+    .unwrap();
+
+    let failure = evaluate(root.path()).unwrap_err();
+    let AppError::InvalidPublication(diagnostics) = failure.error else {
+        panic!("expected invalid publication");
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.0 == "ADDR002")
+        .expect("expected invalid address diagnostic");
+    assert_eq!(diagnostic.summary, "Invalid explicit address");
+    assert!(diagnostic.primary.as_ref().unwrap().span.is_some());
+}
+
+#[test]
 fn publication_attributes_are_optional_and_reach_the_presentation() {
     let root = fixture("valid");
     fs::write(

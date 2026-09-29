@@ -47,11 +47,33 @@ impl Address {
             Self(format!("/{segment}/"))
         }
     }
+
+    fn explicit(value: String) -> Result<Self, &'static str> {
+        if value == "/" {
+            return Ok(Self(value));
+        }
+        if !value.starts_with('/') || !value.ends_with('/') {
+            return Err("an address must start and end with /");
+        }
+        if value.contains("//") {
+            return Err("an address cannot contain empty path segments");
+        }
+        if value.contains('\\') || value.contains('?') || value.contains('#') {
+            return Err("an address must contain only a public path, without \\, ? or #");
+        }
+        if value
+            .trim_matches('/')
+            .split('/')
+            .any(|segment| segment == "." || segment == "..")
+        {
+            return Err("an address cannot contain . or .. path segments");
+        }
+        Ok(Self(value))
+    }
+
     pub fn as_path(&self) -> &str {
         &self.0
     }
-    // TODO: add the constructor alongside authoritative UX address derivation.
-    // No unchecked public constructor: filesystem paths are not addresses.
 }
 
 #[derive(Deserialize)]
@@ -61,6 +83,7 @@ struct FrontMatter {
     date: Option<String>,
     category: Option<String>,
     summary: Option<String>,
+    address: Option<String>,
 }
 
 pub fn parse(
@@ -90,6 +113,24 @@ pub fn parse(
             Some("Add a title to the front matter."),
         ))
     })?;
+    let (address, address_span) = match attributes.address {
+        Some(value) => {
+            let span = attribute_span("address", &source);
+            let address = Address::explicit(value).map_err(|reason| {
+                Box::new(diagnostic(
+                    "ADDR002",
+                    "Invalid explicit address",
+                    &source,
+                    span.bytes.clone(),
+                    Some(reason.into()),
+                    Some("/ for the home page, or a canonical path such as /notes/rust/"),
+                    Some("Use a leading and trailing slash and remove query, fragment, or traversal segments."),
+                ))
+            })?;
+            (address, Some(span))
+        }
+        None => (Address::derive(source_relative_path), None),
+    };
     Ok(Content {
         source: source.clone(),
         attributes: Attributes {
@@ -104,20 +145,25 @@ pub fn parse(
                 .summary
                 .map(|value| spanned_attribute(value, "summary", &source)),
         },
-        address: Address::derive(source_relative_path),
+        address,
+        address_span,
         references: references(&source, body_range.clone()),
         body: MarkdownBody { source, body_range },
     })
 }
 
-fn spanned_attribute(value: String, name: &str, source: &SourceFile) -> Spanned<String> {
+fn attribute_span(name: &str, source: &SourceFile) -> SourceSpan {
     let start = source.text.find(name).unwrap_or(0);
+    SourceSpan {
+        source: source.clone(),
+        bytes: start..start + name.len(),
+    }
+}
+
+fn spanned_attribute(value: String, name: &str, source: &SourceFile) -> Spanned<String> {
     Spanned {
         value,
-        span: Some(SourceSpan {
-            source: source.clone(),
-            bytes: start..start + name.len(),
-        }),
+        span: Some(attribute_span(name, source)),
     }
 }
 
@@ -222,6 +268,7 @@ pub struct Content {
     pub source: SourceFile,
     pub attributes: Attributes,
     pub address: Address,
+    pub address_span: Option<SourceSpan>,
     pub body: MarkdownBody,
     pub references: Vec<InternalReference>,
 }
