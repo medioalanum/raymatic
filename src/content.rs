@@ -298,12 +298,17 @@ impl ReferenceTarget {
             return None;
         }
         let suffix_start = value.find(['?', '#']).unwrap_or(value.len());
-        let address = &value[..suffix_start];
-        if address.is_empty() {
+        let path = &value[..suffix_start];
+        if path.is_empty() {
             return None;
         }
+        let address = if path == "/" || path.ends_with('/') {
+            path.into()
+        } else {
+            format!("{path}/")
+        };
         Some(Self {
-            address: address.into(),
+            address,
             suffix: value[suffix_start..].into(),
         })
     }
