@@ -55,8 +55,12 @@ impl Address {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct FrontMatter {
     title: Option<String>,
+    date: Option<String>,
+    category: Option<String>,
+    summary: Option<String>,
 }
 
 pub fn parse(
@@ -71,8 +75,8 @@ pub fn parse(
             &source,
             0..front_matter.len().min(source.text.len()),
             Some(error.to_string()),
-            Some("valid TOML between opening and closing +++ lines"),
-            Some("Correct the front matter syntax."),
+            Some("valid TOML using supported publication attributes"),
+            Some("Correct the front matter syntax or remove unsupported attributes."),
         ))
     })?;
     let title = attributes.title.ok_or_else(|| {
@@ -86,22 +90,35 @@ pub fn parse(
             Some("Add a title to the front matter."),
         ))
     })?;
-    let title_start = source.text.find("title").unwrap_or(0);
     Ok(Content {
         source: source.clone(),
         attributes: Attributes {
-            title: Spanned {
-                value: title,
-                span: Some(SourceSpan {
-                    source: source.clone(),
-                    bytes: title_start..title_start + 5,
-                }),
-            },
+            title: spanned_attribute(title, "title", &source),
+            date: attributes
+                .date
+                .map(|value| spanned_attribute(value, "date", &source)),
+            category: attributes
+                .category
+                .map(|value| spanned_attribute(value, "category", &source)),
+            summary: attributes
+                .summary
+                .map(|value| spanned_attribute(value, "summary", &source)),
         },
         address: Address::derive(source_relative_path),
         references: references(&source, body_range.clone()),
         body: MarkdownBody { source, body_range },
     })
+}
+
+fn spanned_attribute(value: String, name: &str, source: &SourceFile) -> Spanned<String> {
+    let start = source.text.find(name).unwrap_or(0);
+    Spanned {
+        value,
+        span: Some(SourceSpan {
+            source: source.clone(),
+            bytes: start..start + name.len(),
+        }),
+    }
 }
 
 fn references(source: &SourceFile, body_range: Range<usize>) -> Vec<InternalReference> {
@@ -212,6 +229,9 @@ pub struct Content {
 #[derive(Debug)]
 pub struct Attributes {
     pub title: Spanned<String>,
+    pub date: Option<Spanned<String>>,
+    pub category: Option<Spanned<String>>,
+    pub summary: Option<Spanned<String>>,
 }
 
 #[derive(Debug)]

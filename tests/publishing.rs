@@ -138,6 +138,7 @@ fn multiple_diagnostics_have_stable_path_then_code_order() {
 
 fn normalize(text: &str, root: &Path) -> String {
     text.replace(&root.display().to_string(), "PLACEHOLDER")
+        .replace('\\', "/")
 }
 
 fn invalid_diagnostics(root: &Path) -> Vec<raymatic::diagnostic::Diagnostic> {
