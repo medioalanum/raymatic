@@ -1,5 +1,9 @@
 //! Complete output plans are validated before a staged production commit.
-use crate::{AppError, content::{Address, Asset}, project::EnvironmentError};
+use crate::{
+    AppError,
+    content::{Address, Asset},
+    project::EnvironmentError,
+};
 use std::{
     collections::BTreeSet,
     fs,
