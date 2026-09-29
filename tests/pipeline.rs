@@ -51,6 +51,65 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
 }
 
 #[test]
+fn conventional_assets_are_preserved_and_planned_as_copies() {
+    let root = fixture("valid");
+    fs::create_dir_all(root.path().join("assets/css")).unwrap();
+    fs::write(
+        root.path().join("assets/css/site.css"),
+        "body { margin: 0; }\n",
+    )
+    .unwrap();
+    fs::write(root.path().join("assets/favicon.ico"), [0_u8, 1, 2, 3]).unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    assert_eq!(result.publication.assets.len(), 2);
+    assert_eq!(
+        result.publication.assets[0].relative_path,
+        std::path::Path::new("css/site.css")
+    );
+    assert_eq!(
+        result.publication.assets[1].relative_path,
+        std::path::Path::new("favicon.ico")
+    );
+
+    let css = result
+        .output
+        .entries
+        .iter()
+        .find(|entry| entry.relative_path == std::path::Path::new("css/site.css"))
+        .unwrap();
+    assert!(
+        matches!(&css.content, raymatic::output::OutputContent::CopyFile { source } if source == &root.path().join("assets/css/site.css"))
+    );
+    let icon = result
+        .output
+        .entries
+        .iter()
+        .find(|entry| entry.relative_path == std::path::Path::new("favicon.ico"))
+        .unwrap();
+    assert!(
+        matches!(&icon.content, raymatic::output::OutputContent::CopyFile { source } if source == &root.path().join("assets/favicon.ico"))
+    );
+}
+
+#[test]
+fn asset_output_collision_is_rejected() {
+    let root = fixture("valid");
+    fs::create_dir_all(root.path().join("assets")).unwrap();
+    fs::write(
+        root.path().join("assets/index.html"),
+        "not the rendered page",
+    )
+    .unwrap();
+
+    let failure = evaluate(root.path()).unwrap_err();
+    assert!(matches!(
+        failure.error,
+        AppError::Internal("Invalid output plan")
+    ));
+}
+
+#[test]
 fn default_presentation_remains_page_html_without_configuration() {
     let root = fixture("valid");
     let result = evaluate(root.path()).unwrap();
@@ -73,7 +132,6 @@ fn explicit_presentation_selects_named_template() {
         "<article data-presentation=\"article\">{{ title }}|{{ body }}</article>",
     )
     .unwrap();
-
     let result = evaluate(root.path()).unwrap();
     assert_eq!(
         result.publication.content[0]
@@ -97,7 +155,6 @@ fn missing_explicit_presentation_is_source_aware() {
         "+++\ntitle = \"An article\"\npresentation = \"missing\"\n+++\n\nHello.\n",
     )
     .unwrap();
-
     let failure = evaluate(root.path()).unwrap_err();
     let AppError::InvalidPublication(diagnostics) = failure.error else {
         panic!("expected invalid publication");
@@ -129,7 +186,6 @@ fn explicit_address_overrides_the_path_derived_default() {
         "+++\ntitle = \"An article\"\naddress = \"/notes/rust/\"\n+++\n\nHello.\n",
     )
     .unwrap();
-
     let result = evaluate(root.path()).unwrap();
     assert_eq!(
         result.publication.content[0].address.as_path(),
@@ -150,7 +206,6 @@ fn invalid_explicit_address_is_rejected_with_an_address_diagnostic() {
         "+++\ntitle = \"An article\"\naddress = \"notes/../rust\"\n+++\n\nHello.\n",
     )
     .unwrap();
-
     let failure = evaluate(root.path()).unwrap_err();
     let AppError::InvalidPublication(diagnostics) = failure.error else {
         panic!("expected invalid publication");
@@ -166,17 +221,12 @@ fn invalid_explicit_address_is_rejected_with_an_address_diagnostic() {
 #[test]
 fn publication_attributes_are_optional_and_reach_the_presentation() {
     let root = fixture("valid");
-    fs::write(
-        root.path().join("content/index.md"),
-        "+++\ntitle = \"An article\"\ndate = \"2026-09-29\"\ncategory = \"Engineering\"\nsummary = \"A concise summary.\"\n+++\n\nHello.\n",
-    )
-    .unwrap();
+    fs::write(root.path().join("content/index.md"), "+++\ntitle = \"An article\"\ndate = \"2026-09-29\"\ncategory = \"Engineering\"\nsummary = \"A concise summary.\"\n+++\n\nHello.\n").unwrap();
     fs::write(
         root.path().join("presentation/page.html"),
         "{{ title }}|{{ date }}|{{ category }}|{{ summary }}|{{ body }}",
     )
     .unwrap();
-
     let result = evaluate(root.path()).unwrap();
     let attributes = &result.publication.content[0].attributes;
     assert_eq!(attributes.title.value, "An article");
@@ -186,7 +236,6 @@ fn publication_attributes_are_optional_and_reach_the_presentation() {
         attributes.summary.as_ref().unwrap().value,
         "A concise summary."
     );
-
     assert!(
         rendered_html(&result)
             .contains("An article|2026-09-29|Engineering|A concise summary.|<p>Hello.</p>")
@@ -201,7 +250,6 @@ fn unsupported_front_matter_is_rejected_instead_of_silently_ignored() {
         "+++\ntitle = \"An article\"\nmagic = \"hidden machinery\"\n+++\n\nHello.\n",
     )
     .unwrap();
-
     let failure = evaluate(root.path()).unwrap_err();
     let AppError::InvalidPublication(diagnostics) = failure.error else {
         panic!("expected invalid publication");
@@ -214,9 +262,15 @@ fn unsupported_front_matter_is_rejected_instead_of_silently_ignored() {
 }
 
 fn rendered_html(result: &raymatic::pipeline::PipelineSuccess) -> String {
-    match &result.output.entries[0].content {
+    let entry = result
+        .output
+        .entries
+        .iter()
+        .find(|entry| matches!(entry.content, raymatic::output::OutputContent::Bytes(_)))
+        .expect("expected rendered HTML");
+    match &entry.content {
         raymatic::output::OutputContent::Bytes(bytes) => String::from_utf8(bytes.clone()).unwrap(),
-        raymatic::output::OutputContent::CopyFile { .. } => panic!("expected rendered HTML"),
+        raymatic::output::OutputContent::CopyFile { .. } => unreachable!(),
     }
 }
 
