@@ -94,7 +94,9 @@ pub fn parse(
         source: source.clone(),
         attributes: Attributes {
             title: spanned_attribute(title, "title", &source),
-            date: attributes.date.map(|value| spanned_attribute(value, "date", &source)),
+            date: attributes
+                .date
+                .map(|value| spanned_attribute(value, "date", &source)),
             category: attributes
                 .category
                 .map(|value| spanned_attribute(value, "category", &source)),
