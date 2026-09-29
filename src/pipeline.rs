@@ -189,7 +189,7 @@ fn presentation_diagnostic(
         }),
         related: vec![],
         object: Some(SemanticObject::Content {
-            address: Some(content.address.as_path().into()),
+            address: Some(content.address.clone()),
         }),
         expected: Some(expected.into()),
         help: Some(
