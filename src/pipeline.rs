@@ -123,7 +123,7 @@ fn render_pages(
         let (path, template) = match resolve_presentation(publication, content) {
             Ok(v) => v,
             Err(d) => {
-                diagnostics.push(d);
+                diagnostics.push(*d);
                 continue;
             }
         };
@@ -138,7 +138,7 @@ fn render_pages(
 fn resolve_presentation(
     publication: &Publication,
     content: &crate::content::Content,
-) -> Result<(PathBuf, String), Diagnostic> {
+) -> Result<(PathBuf, String), Box<Diagnostic>> {
     let Some(selection) = &content.presentation else {
         return Ok((
             publication.presentation.source.path.clone(),
@@ -147,12 +147,12 @@ fn resolve_presentation(
     };
     let name = &selection.value;
     if name.is_empty() || name.contains('/') || name.contains('\\') || name == "." || name == ".." {
-        return Err(presentation_diagnostic(
+        return Err(Box::new(presentation_diagnostic(
             content,
             "Invalid presentation selection",
             format!("`{name}` is not a presentation name."),
             "a presentation name such as article",
-        ));
+        )));
     }
     let path = publication
         .root
@@ -160,12 +160,12 @@ fn resolve_presentation(
         .join(format!("{name}.html"));
     match project::read_text(&path) {
         Ok(template) => Ok((path, template)),
-        Err(_) => Err(presentation_diagnostic(
+        Err(_) => Err(Box::new(presentation_diagnostic(
             content,
             "Presentation not found",
             format!("This content selects `{name}`, but presentation/{name}.html does not exist."),
             "an existing file in presentation/",
-        )),
+        ))),
     }
 }
 
