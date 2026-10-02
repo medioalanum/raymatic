@@ -180,9 +180,9 @@ fn references(source: &SourceFile, body_range: Range<usize>) -> Vec<InternalRefe
         };
         let te = ts + c;
         let target = &body[ts..te];
-        if target.starts_with('/') {
+        if let Some(target) = ReferenceTarget::parse(target) {
             out.push(InternalReference {
-                target: target.into(),
+                target,
                 span: SourceSpan {
                     source: source.clone(),
                     bytes: body_range.start + ts..body_range.start + te,
@@ -286,9 +286,45 @@ pub struct MarkdownBody {
     pub body_range: Range<usize>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReferenceTarget {
+    address: String,
+    suffix: String,
+}
+
+impl ReferenceTarget {
+    fn parse(value: &str) -> Option<Self> {
+        if !value.starts_with('/') || value.starts_with("//") {
+            return None;
+        }
+        let suffix_start = value.find(['?', '#']).unwrap_or(value.len());
+        let path = &value[..suffix_start];
+        if path.is_empty() {
+            return None;
+        }
+        let address = if path == "/" || path.ends_with('/') {
+            path.into()
+        } else {
+            format!("{path}/")
+        };
+        Some(Self {
+            address,
+            suffix: value[suffix_start..].into(),
+        })
+    }
+
+    pub fn address(&self) -> &str {
+        &self.address
+    }
+
+    pub fn as_written(&self) -> String {
+        format!("{}{}", self.address, self.suffix)
+    }
+}
+
 #[derive(Debug)]
 pub struct InternalReference {
-    pub target: String,
+    pub target: ReferenceTarget,
     pub span: SourceSpan,
 }
 

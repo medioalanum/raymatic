@@ -3,6 +3,7 @@ use crate::{
     content::Content,
     diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
 };
+use pulldown_cmark::{CowStr, Event, Tag};
 
 pub fn page(
     content: &Content,
@@ -15,8 +16,22 @@ pub fn page(
         .text
         .get(content.body.body_range.clone())
         .expect("body range was derived from source");
+    let parser = pulldown_cmark::Parser::new(body).map(|event| match event {
+        Event::Start(Tag::Link {
+            link_type,
+            dest_url,
+            title,
+            id,
+        }) if internal_destination(&dest_url) => Event::Start(Tag::Link {
+            link_type,
+            dest_url: canonical_destination(dest_url),
+            title,
+            id,
+        }),
+        event => event,
+    });
     let mut markdown = String::new();
-    pulldown_cmark::html::push_html(&mut markdown, pulldown_cmark::Parser::new(body));
+    pulldown_cmark::html::push_html(&mut markdown, parser);
     let environment = minijinja::Environment::new();
     let parsed = environment
         .template_from_str(template)
@@ -30,6 +45,20 @@ pub fn page(
             body => markdown
         ))
         .map_err(|error| Box::new(failure(template_path, error.to_string())))
+}
+
+fn internal_destination(destination: &str) -> bool {
+    destination.starts_with('/') && !destination.starts_with("//")
+}
+
+fn canonical_destination(destination: CowStr<'_>) -> CowStr<'_> {
+    let suffix_start = destination.find(['?', '#']).unwrap_or(destination.len());
+    let (path, suffix) = destination.split_at(suffix_start);
+    if path == "/" || path.ends_with('/') {
+        destination
+    } else {
+        CowStr::Boxed(format!("{path}/{suffix}").into_boxed_str())
+    }
 }
 
 fn failure(path: &std::path::Path, explanation: String) -> Diagnostic {

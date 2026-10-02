@@ -1,5 +1,5 @@
 error[REF001]: Internal reference does not resolve
   --> PLACEHOLDER/content/index.md:5:11: unknown internal target
-  This content links to /missing/ but no content produces that address.
+  This content links to /missing/ but no content produces the address /missing/.
   expected: an address produced by another content item
   help: Correct the target or add content that produces this address.
