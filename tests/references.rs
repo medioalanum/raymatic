@@ -4,12 +4,7 @@ use std::fs;
 #[test]
 fn root_relative_reference_resolves_to_derived_address() {
     let root = project();
-    write_content(
-        root.path(),
-        "index.md",
-        "Home",
-        "Read [about](/about).",
-    );
+    write_content(root.path(), "index.md", "Home", "Read [about](/about).");
     write_content(root.path(), "about.md", "About", "About Raymatic.");
 
     let result = evaluate(root.path()).unwrap();
@@ -56,9 +51,18 @@ fn broken_internal_reference_reports_the_source_target() {
         .find(|diagnostic| diagnostic.code.0 == "REF001")
         .expect("expected reference diagnostic");
     assert_eq!(diagnostic.summary, "Internal reference does not resolve");
-    assert_eq!(diagnostic.primary.as_ref().unwrap().path, root.path().join("content/index.md"));
+    assert_eq!(
+        diagnostic.primary.as_ref().unwrap().path,
+        root.path().join("content/index.md")
+    );
     assert!(diagnostic.primary.as_ref().unwrap().span.is_some());
-    assert!(diagnostic.explanation.as_deref().unwrap().contains("/missing/#details"));
+    assert!(
+        diagnostic
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("/missing/#details")
+    );
 }
 
 #[test]

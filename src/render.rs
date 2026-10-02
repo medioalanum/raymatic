@@ -3,7 +3,7 @@ use crate::{
     content::Content,
     diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
 };
-use pulldown_cmark::{CowStr, Event, LinkType, Tag};
+use pulldown_cmark::{CowStr, Event, Tag};
 
 pub fn page(
     content: &Content,
