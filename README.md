@@ -4,9 +4,9 @@
 
 > **Live website:** [Open the official Raymatic site](https://medioalanum.github.io/raymatic/)
 
-Raymatic is a small file-based publishing tool for turning content and presentation intent into a deterministic static publication. It explores how much incidental publishing machinery a tool can own while keeping the author's files, presentation choices, and deliberate deviations visible.
+Raymatic is a publication-first static-site generator: it turns content and presentation intent into a deterministic static site while owning the incidental machinery around validation, preview, rendering, and safe output. Its goal is a Rails-like publishing experience with native performance and a small, explicit model.
 
-The project is an early public experiment. It does not claim to be the fastest, easiest, or most complete static-site generator, and its product thesis has not been validated by external user research.
+The project is early, but its product contract is concrete: start with a useful publication, keep the authoring model visible, and make the common path require as few decisions as possible.
 
 ## Why Raymatic exists
 
@@ -28,18 +28,28 @@ The complete installation steps and checksum workflow are in [docs/INSTALL.md](d
 
 ## Quick start
 
+A new publication starts with one command and one shared presentation:
+
 ```sh
 ray new my-publication
 cd my-publication
 ray dev
 ```
 
-Open <http://127.0.0.1:3000>, edit the files under `content/` or the shared template at `presentation/page.html`, and let the development session rebuild the preview. Then validate and create production output:
+Open <http://127.0.0.1:3000>. Write in `content/`, change the presentation in `presentation/`, and keep the preview open while Raymatic validates and rebuilds the publication. When it is ready to publish:
 
 ```sh
 ray check
 ray build
 ```
+
+The four commands are the product surface:
+
+```text
+new → dev → check → build
+```
+
+You do not need to assemble a theme, configure a plugin registry, or maintain a separate preview and production pipeline for the first publication.
 
 The generated publication is written to `output/` only after a successful build.
 
