@@ -136,12 +136,42 @@ fn render_pages(
                 continue;
             }
         };
-        match crate::render::page(content, &path, &template) {
+        let recent = recent_entries(publication);
+        match crate::render::page(content, &path, &template, &recent) {
             Ok(html) => pages.push((html, content.source.path.clone(), content.address.clone())),
             Err(d) => diagnostics.push(*d),
         }
     }
     pages
+}
+
+fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEntry> {
+    let mut entries: Vec<_> = publication
+        .content
+        .iter()
+        .filter(|item| item.source.path != publication.root.join("content/index.md"))
+        .map(|item| crate::render::PublicationEntry {
+            title: item.attributes.title.value.clone(),
+            date: item
+                .attributes
+                .date
+                .as_ref()
+                .map(|value| value.value.clone()),
+            summary: item
+                .attributes
+                .summary
+                .as_ref()
+                .map(|value| value.value.clone()),
+            address: item.address.as_path().to_owned(),
+        })
+        .collect();
+    entries.sort_by(|left, right| {
+        right
+            .date
+            .cmp(&left.date)
+            .then(left.address.cmp(&right.address))
+    });
+    entries
 }
 
 fn resolve_presentation(

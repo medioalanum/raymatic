@@ -4,11 +4,21 @@ use crate::{
     diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel},
 };
 use pulldown_cmark::{CowStr, Event, Tag};
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct PublicationEntry {
+    pub title: String,
+    pub date: Option<String>,
+    pub summary: Option<String>,
+    pub address: String,
+}
 
 pub fn page(
     content: &Content,
     template_path: &std::path::Path,
     template: &str,
+    recent: &[PublicationEntry],
 ) -> Result<String, Box<Diagnostic>> {
     let body = content
         .body
@@ -43,6 +53,7 @@ pub fn page(
             category => content.attributes.category.as_ref().map(|value| &value.value),
             summary => content.attributes.summary.as_ref().map(|value| &value.value),
             attributes => &content.attributes.custom,
+            recent => recent,
             body => markdown
         ))
         .map_err(|error| Box::new(failure(template_path, error.to_string())))
