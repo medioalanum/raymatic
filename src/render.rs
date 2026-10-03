@@ -10,10 +10,21 @@ use serde::Serialize;
 pub struct PublicationEntry {
     pub title: String,
     pub date: Option<String>,
+    pub display_date: Option<String>,
     pub category: Option<String>,
     pub tags: Vec<String>,
     pub summary: Option<String>,
     pub address: String,
+}
+
+pub fn display_date(value: Option<&str>) -> Option<String> {
+    let value = value?;
+    let mut parts = value.split('-');
+    let year: i32 = parts.next()?.parse().ok()?;
+    let month: usize = parts.next()?.parse().ok()?;
+    let day: u32 = parts.next()?.parse().ok()?;
+    let months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    Some(format!("{day} {} {year}", months.get(month)?))
 }
 
 pub fn page(
@@ -52,6 +63,7 @@ pub fn page(
         .render(minijinja::context!(
             title => &content.attributes.title.value,
             date => content.attributes.date.as_ref().map(|value| &value.value),
+            display_date => display_date(content.attributes.date.as_ref().map(|value| value.value.as_str())),
             category => content.attributes.category.as_ref().map(|value| &value.value),
             summary => content.attributes.summary.as_ref().map(|value| &value.value),
             attributes => &content.attributes.custom,
