@@ -203,6 +203,10 @@ fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
             "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <title>{{ title }}</title>\n  </head>\n  <body>\n    <main>{{ body }}</main>\n  </body>\n</html>\n",
         ),
         (
+            "presentation/index.html",
+            "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <title>{{ title }}</title>\n  </head>\n  <body>\n    <main>{{ body }}</main>\n  </body>\n</html>\n",
+        ),
+        (
             "README.md",
             "# Raymatic publication\n\n- Write pages in `content/`.\n- Change the shared HTML in `presentation/page.html`.\n- Put static files in `assets/`; their paths are preserved in the generated site.\n- Run `ray dev` for a local preview.\n- Run `ray check` before `ray build`.\n- Find the production site in `output/` after `ray build`.\n",
         ),
