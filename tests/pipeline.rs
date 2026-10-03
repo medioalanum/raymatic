@@ -383,3 +383,32 @@ fn copy_tree(from: &std::path::Path, to: &std::path::Path) {
         }
     }
 }
+
+#[test]
+fn real_publication_fixture_preserves_editorial_intent() {
+    let root = fixture("real-publication");
+    let result = evaluate(root.path()).unwrap();
+    assert_eq!(result.publication.content.len(), 3);
+    assert!(result.output.entries.iter().any(|entry| {
+        entry.relative_path == std::path::Path::new("notes/type-hints/index.html")
+    }));
+    assert!(
+        result
+            .output
+            .entries
+            .iter()
+            .any(|entry| entry.relative_path == std::path::Path::new("brand.txt"))
+    );
+    let home = result
+        .output
+        .entries
+        .iter()
+        .find(|entry| entry.relative_path == std::path::Path::new("index.html"))
+        .unwrap();
+    let raymatic::output::OutputContent::Bytes(bytes) = &home.content else {
+        panic!("expected rendered home")
+    };
+    let home = String::from_utf8(bytes.clone()).unwrap();
+    assert!(home.contains("I finally stopped resisting type hints"));
+    assert!(home.contains("/notes/type-hints/"));
+}
