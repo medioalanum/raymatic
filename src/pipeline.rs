@@ -155,12 +155,15 @@ fn resolve_presentation(
             let path = publication.root.join("presentation/index.html");
             return project::read_text(&path)
                 .map(|template| (path, template))
-                .map_err(|_| Box::new(presentation_diagnostic(
-                    content,
-                    "Home presentation could not be read",
-                    "The conventional presentation/index.html exists but could not be read.".into(),
-                    "a readable presentation/index.html file",
-                )));
+                .map_err(|_| {
+                    Box::new(presentation_diagnostic(
+                        content,
+                        "Home presentation could not be read",
+                        "The conventional presentation/index.html exists but could not be read."
+                            .into(),
+                        "a readable presentation/index.html file",
+                    ))
+                });
         }
         return Ok((
             publication.presentation.source.path.clone(),
