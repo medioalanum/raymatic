@@ -10,6 +10,8 @@ use serde::Serialize;
 pub struct PublicationEntry {
     pub title: String,
     pub date: Option<String>,
+    pub category: Option<String>,
+    pub tags: Vec<String>,
     pub summary: Option<String>,
     pub address: String,
 }
