@@ -33,20 +33,23 @@ pub fn run(root: &Path) -> Result<(), AppError> {
     start_server(root.clone(), state.clone())?;
     eprintln!("Preview available at http://{ADDRESS}");
     let (sender, receiver) = mpsc::channel();
-    let mut watcher = notify::recommended_watcher(move |_| {
-        let _ = sender.send(());
+    let watch_root = root.clone();
+    let mut watcher = notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
+        if let Ok(event) = result
+            && event
+                .paths
+                .iter()
+                .any(|path| source_path(&watch_root, path))
+        {
+            let _ = sender.send(());
+        }
     })
     .map_err(|error| AppError::Operational(format!("Cannot start filesystem watcher: {error}")))?;
-    for directory in ["content", "presentation"] {
-        watcher
-            .watch(&root.join(directory), RecursiveMode::Recursive)
-            .map_err(|error| {
-                AppError::Operational(format!(
-                    "Cannot watch {}: {error}",
-                    root.join(directory).display()
-                ))
-            })?;
-    }
+    watcher
+        .watch(&root, RecursiveMode::Recursive)
+        .map_err(|error| {
+            AppError::Operational(format!("Cannot watch {}: {error}", root.display()))
+        })?;
     loop {
         receiver
             .recv()
@@ -54,6 +57,17 @@ pub fn run(root: &Path) -> Result<(), AppError> {
         while receiver.recv_timeout(DEBOUNCE).is_ok() {}
         report_rebuild(&root, &state)?;
     }
+}
+
+fn source_path(root: &Path, path: &Path) -> bool {
+    let Ok(relative) = path.strip_prefix(root) else {
+        return false;
+    };
+    matches!(
+        relative.components().next(),
+        Some(Component::Normal(component))
+            if matches!(component.to_str(), Some("content" | "presentation" | "assets"))
+    )
 }
 
 pub fn rebuild_once(root: &Path, state: &mut DevState) -> Result<Rebuild, AppError> {
@@ -237,5 +251,29 @@ mod tests {
             }
         }
         worker.join().unwrap();
+    }
+
+    #[test]
+    fn source_events_include_optional_assets_but_ignore_generated_files() {
+        let root = Path::new("/publication");
+        assert!(source_path(
+            root,
+            Path::new("/publication/content/index.md")
+        ));
+        assert!(source_path(
+            root,
+            Path::new("/publication/presentation/page.html")
+        ));
+        assert!(source_path(root, Path::new("/publication/assets/site.css")));
+        assert!(source_path(root, Path::new("/publication/assets")));
+        assert!(!source_path(
+            root,
+            Path::new("/publication/output/index.html")
+        ));
+        assert!(!source_path(
+            root,
+            Path::new("/publication/.raymatic-preview/index.html")
+        ));
+        assert!(!source_path(root, Path::new("/other/assets/site.css")));
     }
 }
