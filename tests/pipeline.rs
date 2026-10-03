@@ -1,4 +1,4 @@
-use raymatic::{AppError, pipeline::evaluate, project::EnvironmentError};
+use raymatic::{AppError, output::OutputContent, pipeline::evaluate, project::EnvironmentError};
 use std::fs;
 
 #[test]
@@ -117,6 +117,23 @@ fn default_presentation_remains_page_html_without_configuration() {
     let rendered = rendered_html(&result);
     assert!(rendered.contains("<title>Hello Raymatic</title>"));
     assert!(rendered.contains("<h1>Hello</h1>"));
+}
+
+#[test]
+fn root_content_uses_conventional_home_presentation_when_present() {
+    let root = tempfile::tempdir().unwrap();
+    fs::create_dir_all(root.path().join("content")).unwrap();
+    fs::create_dir_all(root.path().join("presentation")).unwrap();
+    fs::write(root.path().join("content/index.md"), "+++\ntitle = \"Home\"\n+++\n\nWelcome.\n").unwrap();
+    fs::write(root.path().join("presentation/page.html"), "<article>page</article>").unwrap();
+    fs::write(root.path().join("presentation/index.html"), "<main data-home> {{ body }} </main>").unwrap();
+
+    let result = crate::pipeline::evaluate(root.path()).unwrap();
+    let planned = result.output.entries.iter().find(|entry| entry.relative_path == "index.html").unwrap();
+    match &planned.content {
+        OutputContent::Bytes(bytes) => assert!(String::from_utf8_lossy(bytes).contains("data-home")),
+        OutputContent::CopyFile { .. } => panic!("home output must be rendered"),
+    }
 }
 
 #[test]
