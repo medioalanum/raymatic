@@ -39,3 +39,19 @@ not claim formal conformance with unavailable acceptance text or numeric budgets
 Asset changes currently are not watched by `dev`, although assets participate in
 `check` and `build`. A separate slice can cover creation, editing and removal of
 optional `assets/` during a development session, with recovery and HTTP tests.
+
+## Slice 7 — Watch conventional assets
+
+The development watcher now observes the publication root and filters events to
+`content/`, `presentation/`, and the optional `assets/` tree. This means creating
+`assets/`, adding or editing a static file, and removing one all trigger the same
+coarse rebuild used by the rest of the publication. Generated `output/` and
+`.raymatic-preview/` changes are ignored, so a rebuild cannot trigger itself.
+
+The semantic model and command surface remain unchanged. The source-event filter
+has focused coverage for all three source trees, generated paths, and a path
+outside the publication.
+
+The local environment cannot bind the loopback socket used by the existing HTTP
+preview regression test (`Operation not permitted`); CI remains the authoritative
+cross-platform check for that test.
