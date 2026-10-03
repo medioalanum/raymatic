@@ -25,6 +25,8 @@ jobs:
       - name: Build Raymatic
         run: cargo build --release
       - name: Build website with Raymatic
+        run: ../target/release/ray check
+      - name: Build website with Raymatic
         run: ../target/release/ray build
         working-directory: site
       - uses: actions/configure-pages@v5
