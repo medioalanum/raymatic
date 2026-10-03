@@ -200,7 +200,7 @@ fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
         ),
         (
             "presentation/page.html",
-            "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <title>{{ title }}</title>\n  </head>\n  <body>\n    <main>{{ body }}</main>\n  </body>\n</html>\n",
+            "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>{{ title }} · Raymatic</title>\n    <style>\n      :root{color-scheme:light;font-family:system-ui,-apple-system,sans-serif;color:#202124;background:#faf9f7}\n      body{max-width:48rem;margin:0 auto;padding:4rem 1.5rem;line-height:1.7}\n      main{background:#fff;padding:clamp(2rem,7vw,5rem);border:1px solid #e8e3dc;border-radius:1rem;box-shadow:0 1rem 3rem #332b2010}\n      h1{font-size:clamp(2rem,7vw,4rem);line-height:1.05;margin:0 0 1rem;letter-spacing:-.04em}\n      p{color:#5d5a55;font-size:1.1rem}\n      code{background:#f1eee9;padding:.15em .35em;border-radius:.3em}\n    </style>\n  </head>\n  <body>\n    <main>{{ body }}</main>\n  </body>\n</html>\n",
         ),
         (
             "presentation/index.html",
