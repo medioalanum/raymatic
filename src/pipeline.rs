@@ -149,6 +149,19 @@ fn resolve_presentation(
     content: &crate::content::Content,
 ) -> Result<(PathBuf, String), Box<Diagnostic>> {
     let Some(selection) = &content.presentation else {
+        let conventional_home = content.source.path == publication.root.join("content/index.md")
+            && publication.root.join("presentation/index.html").is_file();
+        if conventional_home {
+            let path = publication.root.join("presentation/index.html");
+            return project::read_text(&path)
+                .map(|template| (path, template))
+                .map_err(|_| Box::new(presentation_diagnostic(
+                    content,
+                    "Home presentation could not be read",
+                    "The conventional presentation/index.html exists but could not be read.".into(),
+                    "a readable presentation/index.html file",
+                )));
+        }
         return Ok((
             publication.presentation.source.path.clone(),
             publication.presentation.template.clone(),
