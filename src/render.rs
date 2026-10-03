@@ -38,7 +38,30 @@ pub fn display_date(value: Option<&str>) -> Option<String> {
         "November",
         "December",
     ];
-    Some(format!("{day} {} {year}", months.get(month)?))
+    let offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+    let mut adjusted_year = year;
+    if month < 3 {
+        adjusted_year -= 1;
+    }
+    let weekday_index = (adjusted_year + adjusted_year / 4 - adjusted_year / 100
+        + adjusted_year / 400
+        + offsets[month - 1]
+        + day as i32)
+        % 7;
+    let weekdays = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+    ];
+    Some(format!(
+        "{} {day} {} {year}",
+        weekdays.get(weekday_index as usize)?,
+        months.get(month)?,
+    ))
 }
 
 pub fn page(
