@@ -23,7 +23,21 @@ pub fn display_date(value: Option<&str>) -> Option<String> {
     let year: i32 = parts.next()?.parse().ok()?;
     let month: usize = parts.next()?.parse().ok()?;
     let day: u32 = parts.next()?.parse().ok()?;
-    let months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let months = [
+        "",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
     Some(format!("{day} {} {year}", months.get(month)?))
 }
 
