@@ -104,7 +104,7 @@ fn start_server(root: PathBuf, state: Arc<Mutex<DevState>>) -> Result<(), AppErr
 }
 
 fn respond(request: tiny_http::Request, root: &Path, state: &Arc<Mutex<DevState>>) {
-    let url = request.url();
+    let url = request.url().split('?').next().unwrap_or("/");
     if url == "/_raymatic/revision" {
         let revision = state.lock().map(|state| state.revision).unwrap_or_default();
         let _ = request.respond(tiny_http::Response::from_string(revision.to_string()));
@@ -124,16 +124,26 @@ fn respond(request: tiny_http::Request, root: &Path, state: &Arc<Mutex<DevState>
         let _ = request.respond(tiny_http::Response::empty(404));
         return;
     }
-    let path = root.join(PREVIEW_DIRECTORY).join(relative);
+    let mut path = root.join(PREVIEW_DIRECTORY).join(relative);
+    if path.is_dir() {
+        path = path.join("index.html");
+    }
     match fs::read(&path) {
         Ok(mut bytes) => {
-            if path
+            let is_html = path
                 .extension()
-                .is_some_and(|extension| extension == "html")
-            {
+                .is_some_and(|extension| extension == "html");
+            if is_html {
                 bytes.extend_from_slice(reload_script().as_bytes());
             }
-            let _ = request.respond(tiny_http::Response::from_data(bytes));
+            let mut response = tiny_http::Response::from_data(bytes);
+            if is_html {
+                response.add_header(
+                    tiny_http::Header::from_bytes("Content-Type", "text/html; charset=utf-8")
+                        .expect("static HTML content type is valid"),
+                );
+            }
+            let _ = request.respond(response);
         }
         Err(_) => {
             let _ = request.respond(tiny_http::Response::empty(404));
@@ -143,4 +153,89 @@ fn respond(request: tiny_http::Request, root: &Path, state: &Arc<Mutex<DevState>
 
 fn reload_script() -> &'static str {
     "<script>(()=>{let r;setInterval(async()=>{try{let n=await fetch('/_raymatic/revision',{cache:'no-store'}).then(x=>x.text());if(r!==undefined&&n!==r)location.reload();r=n}catch(_){}} ,500)})()</script>"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{
+        io::{Read, Write},
+        net::TcpStream,
+    };
+
+    #[test]
+    fn preview_serves_publication_addresses_over_http() {
+        let root = tempfile::tempdir().unwrap();
+        crate::project::create(&root.path().join("site")).unwrap();
+        let root = root.path().join("site");
+        fs::write(root.join("content/index.md"),
+            "+++\ntitle = \"Home\"\n+++\n\n[About](/about) [Notes](/notes/rust/?from=home#ownership)\n").unwrap();
+        fs::write(
+            root.join("content/about.md"),
+            "+++\ntitle = \"About\"\n+++\n\nAbout the publication.\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("content/article.md"),
+            "+++\ntitle = \"Rust\"\naddress = \"/notes/rust/\"\n+++\n\n# Ownership\n",
+        )
+        .unwrap();
+        fs::create_dir(root.join("assets")).unwrap();
+        fs::write(root.join("assets/example.txt"), "static example").unwrap();
+        let mut state = DevState::default();
+        assert_eq!(rebuild_once(&root, &mut state).unwrap(), Rebuild::Updated);
+        let state = Arc::new(Mutex::new(state));
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let cases = [
+            ("/", 200, "href=\"/about/\""),
+            ("/about/", 200, "About the publication."),
+            ("/about", 200, "About the publication."),
+            ("/notes/rust/?from=home", 200, "Ownership"),
+            ("/about/index.html?from=home", 200, "About the publication."),
+            ("/example.txt?download=1", 200, "static example"),
+            ("/_raymatic/revision?poll=1", 200, "1"),
+            ("/missing/", 404, ""),
+            ("/../content/index.md", 404, ""),
+        ];
+        let worker = thread::spawn(move || {
+            for _ in 0..cases.len() {
+                let request = server
+                    .recv_timeout(Duration::from_secs(5))
+                    .unwrap()
+                    .unwrap();
+                respond(request, &root, &state);
+            }
+        });
+        for (url, status, body) in cases {
+            let mut stream = TcpStream::connect(address).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            write!(
+                stream,
+                "GET {url} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+            )
+            .unwrap();
+            let mut response = String::new();
+            stream.read_to_string(&mut response).unwrap();
+            assert!(
+                response.starts_with(&format!("HTTP/1.1 {status}")),
+                "{url}: {response}"
+            );
+            assert!(response.contains(body), "{url}: {response}");
+            if status == 200 && !url.starts_with("/example.txt") && !url.starts_with("/_raymatic/")
+            {
+                assert!(
+                    response.contains("Content-Type: text/html; charset=utf-8"),
+                    "{url}: {response}"
+                );
+                assert!(
+                    response.contains("/_raymatic/revision"),
+                    "{url}: {response}"
+                );
+            }
+        }
+        worker.join().unwrap();
+    }
 }
