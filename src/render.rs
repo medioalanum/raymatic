@@ -42,6 +42,7 @@ pub fn page(
             date => content.attributes.date.as_ref().map(|value| &value.value),
             category => content.attributes.category.as_ref().map(|value| &value.value),
             summary => content.attributes.summary.as_ref().map(|value| &value.value),
+            attributes => &content.attributes.custom,
             body => markdown
         ))
         .map_err(|error| Box::new(failure(template_path, error.to_string())))
@@ -76,7 +77,8 @@ fn failure(path: &std::path::Path, explanation: String) -> Diagnostic {
         related: vec![],
         object: Some(SemanticObject::Presentation),
         expected: Some(
-            "a valid MiniJinja template using title, date, category, summary, and body".into(),
+            "a valid MiniJinja template using title, date, category, summary, attributes, and body"
+                .into(),
         ),
         help: Some("Correct the template syntax.".into()),
     }
