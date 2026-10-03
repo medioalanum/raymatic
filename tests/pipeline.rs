@@ -156,6 +156,34 @@ fn root_content_uses_conventional_home_presentation_when_present() {
 }
 
 #[test]
+fn home_presentation_receives_recent_publication_entries_in_stable_order() {
+    let root = fixture("valid");
+    fs::create_dir_all(root.path().join("content/notes")).unwrap();
+    fs::write(
+        root.path().join("content/notes/older.md"),
+        "+++\ntitle = \"Older\"\ndate = \"2025-01-01\"\nsummary = \"Old summary\"\n+++\n\nOlder body.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("content/notes/newer.md"),
+        "+++\ntitle = \"Newer\"\ndate = \"2026-01-01\"\nsummary = \"New summary\"\n+++\n\nNewer body.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/index.html"),
+        "{% for item in recent %}{{ item.title }}|{{ item.date }}|{{ item.summary }}|{{ item.address }};{% endfor %}",
+    )
+    .unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    let rendered = rendered_html(&result);
+    assert_eq!(
+        rendered,
+        "Newer|2026-01-01|New summary|/notes/newer/;Older|2025-01-01|Old summary|/notes/older/;"
+    );
+}
+
+#[test]
 fn explicit_presentation_selects_named_template() {
     let root = fixture("valid");
     fs::write(
