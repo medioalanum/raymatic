@@ -145,7 +145,7 @@ fn root_content_uses_conventional_home_presentation_when_present() {
         .output
         .entries
         .iter()
-        .find(|entry| entry.relative_path == "index.html")
+        .find(|entry| entry.relative_path == std::path::Path::new("index.html"))
         .unwrap();
     match &planned.content {
         OutputContent::Bytes(bytes) => {
