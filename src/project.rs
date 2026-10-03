@@ -208,7 +208,7 @@ fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
         ),
         (
             "README.md",
-            "# Raymatic publication\n\nStart the local loop:\n\n\`\`\`sh\nray dev\n\`\`\`\n\nWrite a page in \`content/\` with TOML front matter:\n\n\`\`\`markdown\n+++\ntitle = \"My first page\"\n+++\n\nWrite your page here.\n\`\`\`\n\n- Change the shared HTML in \`presentation/page.html\`.\n- Put static files in \`assets/\`; their paths are preserved in the generated site.\n- Run \`ray check\` to validate without replacing \`output/\`.\n- Run \`ray build\` when the publication is ready.\n- Find the production site in \`output/\` after a successful build.\n\nIf an edit is invalid during \`ray dev\`, the last valid preview stays available. Read the diagnostic, fix the source file, and save it to rebuild.\n",
+            "# Raymatic publication\n\nStart the local loop:\n\n```sh\nray dev\n```\n\nWrite a page in `content/` with TOML front matter:\n\n```markdown\n+++\ntitle = \"My first page\"\n+++\n\nWrite your page here.\n```\n\n- Change the shared HTML in `presentation/page.html`.\n- Put static files in `assets/`; their paths are preserved in the generated site.\n- Run `ray check` to validate without replacing `output/`.\n- Run `ray build` when the publication is ready.\n- Find the production site in `output/` after a successful build.\n\nIf an edit is invalid during `ray dev`, the last valid preview stays available. Read the diagnostic, fix the source file, and save it to rebuild.\n",
         ),
     ] {
         let path = root.join(relative_path);
