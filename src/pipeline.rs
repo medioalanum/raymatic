@@ -157,6 +157,12 @@ fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEn
                 .date
                 .as_ref()
                 .map(|value| value.value.clone()),
+            display_date: crate::render::display_date(
+                item.attributes
+                    .date
+                    .as_ref()
+                    .map(|value| value.value.as_str()),
+            ),
             category: item
                 .attributes
                 .category
