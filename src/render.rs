@@ -48,15 +48,7 @@ pub fn display_date(value: Option<&str>) -> Option<String> {
         + offsets[month - 1]
         + day as i32)
         % 7;
-    let weekdays = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-    ];
+    let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     Some(format!(
         "{} {day} {} {year}",
         weekdays.get(weekday_index as usize)?,
