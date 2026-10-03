@@ -243,21 +243,45 @@ fn publication_attributes_are_optional_and_reach_the_presentation() {
 }
 
 #[test]
-fn unsupported_front_matter_is_rejected_instead_of_silently_ignored() {
+fn custom_attributes_remain_portable_and_reach_the_presentation() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"An article\"\ndate = \"2026-09-29\"\nsummary = \"A concise summary.\"\nreading_minutes = 4\nfeatured = true\ntags = [\"rust\", \"publishing\"]\n+++\n\nHello.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ title }}|{{ date }}|{{ summary }}|{{ attributes.reading_minutes }}|{{ attributes.featured }}|{{ attributes.tags|join(',') }}|{{ body }}",
+    )
+    .unwrap();
+
+    let result = evaluate(root.path()).unwrap();
+    let attributes = &result.publication.content[0].attributes;
+    assert_eq!(attributes.custom["reading_minutes"].as_integer(), Some(4));
+    assert_eq!(attributes.custom["featured"].as_bool(), Some(true));
+    assert!(
+        attributes.custom_spans["tags"].bytes.end > attributes.custom_spans["tags"].bytes.start
+    );
+    assert!(
+        rendered_html(&result).contains(
+            "An article|2026-09-29|A concise summary.|4|True|rust,publishing|<p>Hello.</p>"
+        )
+    );
+}
+
+#[test]
+fn custom_front_matter_is_preserved_instead_of_rejected() {
     let root = fixture("valid");
     fs::write(
         root.path().join("content/index.md"),
         "+++\ntitle = \"An article\"\nmagic = \"hidden machinery\"\n+++\n\nHello.\n",
     )
     .unwrap();
-    let failure = evaluate(root.path()).unwrap_err();
-    let AppError::InvalidPublication(diagnostics) = failure.error else {
-        panic!("expected invalid publication");
-    };
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.code.0 == "CONTENT001")
+    let result = evaluate(root.path()).unwrap();
+    assert_eq!(
+        result.publication.content[0].attributes.custom["magic"].as_str(),
+        Some("hidden machinery")
     );
 }
 

@@ -1,7 +1,7 @@
 //! Owned semantic data and source provenance, independent of parser libraries.
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SemanticObject, Severity, SourceLabel};
 use serde::Deserialize;
-use std::{ops::Range, path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, ops::Range, path::PathBuf, sync::Arc};
 
 #[derive(Clone, Debug)]
 pub struct SourceFile {
@@ -76,7 +76,6 @@ impl Address {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
 struct FrontMatter {
     title: Option<String>,
     date: Option<String>,
@@ -84,6 +83,8 @@ struct FrontMatter {
     summary: Option<String>,
     address: Option<String>,
     presentation: Option<String>,
+    #[serde(flatten)]
+    custom: BTreeMap<String, toml::Value>,
 }
 
 pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, Box<Diagnostic>> {
@@ -142,6 +143,12 @@ pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, 
                 .category
                 .map(|v| spanned_attribute(v, "category", &source)),
             summary: a.summary.map(|v| spanned_attribute(v, "summary", &source)),
+            custom_spans: a
+                .custom
+                .keys()
+                .map(|name| (name.clone(), attribute_span(name, &source)))
+                .collect(),
+            custom: a.custom,
         },
         address,
         address_span,
@@ -278,6 +285,8 @@ pub struct Attributes {
     pub date: Option<Spanned<String>>,
     pub category: Option<Spanned<String>>,
     pub summary: Option<Spanned<String>>,
+    pub custom: BTreeMap<String, toml::Value>,
+    pub custom_spans: BTreeMap<String, SourceSpan>,
 }
 
 #[derive(Debug)]
