@@ -43,11 +43,11 @@ pub fn display_date(value: Option<&str>) -> Option<String> {
     if month < 3 {
         adjusted_year -= 1;
     }
-    let weekday_index =
-        (adjusted_year + adjusted_year / 4 - adjusted_year / 100 + adjusted_year / 400
-            + offsets[month - 1]
-            + day as i32)
-            % 7;
+    let weekday_index = (adjusted_year + adjusted_year / 4 - adjusted_year / 100
+        + adjusted_year / 400
+        + offsets[month - 1]
+        + day as i32)
+        % 7;
     let weekdays = [
         "Sunday",
         "Monday",
