@@ -140,7 +140,7 @@ fn root_content_uses_conventional_home_presentation_when_present() {
     )
     .unwrap();
 
-    let result = crate::pipeline::evaluate(root.path()).unwrap();
+    let result = evaluate(root.path()).unwrap();
     let planned = result
         .output
         .entries
@@ -149,7 +149,7 @@ fn root_content_uses_conventional_home_presentation_when_present() {
         .unwrap();
     match &planned.content {
         OutputContent::Bytes(bytes) => {
-            assert!(String::from_utf8_lossy(bytes).contains("data-home"))
+            assert!(String::from_utf8_lossy(&bytes).contains("data-home"))
         }
         OutputContent::CopyFile { .. } => panic!("home output must be rendered"),
     }
