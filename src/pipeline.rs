@@ -157,6 +157,23 @@ fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEn
                 .date
                 .as_ref()
                 .map(|value| value.value.clone()),
+            category: item
+                .attributes
+                .category
+                .as_ref()
+                .map(|value| value.value.clone()),
+            tags: item
+                .attributes
+                .custom
+                .get("tags")
+                .and_then(|value| value.as_array())
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter_map(|value| value.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default(),
             summary: item
                 .attributes
                 .summary
