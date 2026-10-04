@@ -37,17 +37,119 @@ fn valid_fixture_creates_a_deterministic_output_plan() {
     let root = fixture("valid");
     let first = evaluate(root.path()).unwrap();
     let second = evaluate(root.path()).unwrap();
-    assert_eq!(first.output.entries.len(), 1);
-    assert_eq!(
-        first.output.entries[0].relative_path,
-        std::path::Path::new("index.html")
-    );
+    let paths: Vec<_> = first
+        .output
+        .entries
+        .iter()
+        .map(|entry| entry.relative_path.as_path())
+        .collect();
+    assert!(paths.contains(&std::path::Path::new("index.html")));
+    assert!(paths.contains(&std::path::Path::new("sitemap.xml")));
+    assert!(paths.contains(&std::path::Path::new("robots.txt")));
     assert!(first.timings.semantic.is_some());
     assert_eq!(
         format!("{:?}", first.output.entries),
         format!("{:?}", second.output.entries)
     );
     assert_eq!(first.publication.content[0].address.as_path(), "/");
+}
+
+#[test]
+fn derived_reading_time_is_available_to_presentations() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"Reading\"\n+++\n\none two three four five six seven eight nine ten\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ reading_minutes }}",
+    )
+    .unwrap();
+    let result = evaluate(root.path()).unwrap();
+    let OutputContent::Bytes(bytes) = &result.output.entries[0].content else {
+        panic!("expected rendered HTML bytes")
+    };
+    assert_eq!(String::from_utf8_lossy(bytes), "1");
+}
+
+#[test]
+fn seo_metadata_overrides_are_available_to_presentations() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"Source title\"\ncanonical = \"https://example.test/custom/\"\nog_title = \"Social title\"\nog_description = \"Social description\"\ntwitter_card = \"summary\"\n+++\n\nBody.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ canonical_url }}|{{ og_title }}|{{ og_description }}|{{ twitter_card }}",
+    )
+    .unwrap();
+    let result = evaluate(root.path()).unwrap();
+    let OutputContent::Bytes(bytes) = &result.output.entries[0].content else {
+        panic!("expected rendered bytes")
+    };
+    assert_eq!(
+        String::from_utf8_lossy(bytes),
+        "https://example.test/custom/|Social title|Social description|summary"
+    );
+}
+
+#[test]
+fn optional_site_configuration_reaches_presentations() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("site.toml"),
+        "title = \"My Notebook\"\nauthor = \"Ada\"\nlanguage = \"pt-BR\"\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ site_title }}|{{ site_author }}|{{ site_language }}",
+    )
+    .unwrap();
+    let result = evaluate(root.path()).unwrap();
+    let OutputContent::Bytes(bytes) = &result.output.entries[0].content else {
+        panic!("expected rendered bytes")
+    };
+    assert_eq!(String::from_utf8_lossy(bytes), "My Notebook|Ada|pt-BR");
+}
+
+#[test]
+fn dated_content_receives_previous_and_next_navigation() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/older.md"),
+        "+++\ntitle = \"Older\"\ndate = \"2025-01-01\"\n+++\n\nOlder.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("content/newer.md"),
+        "+++\ntitle = \"Newer\"\ndate = \"2027-01-01\"\n+++\n\nNewer.\n",
+    )
+    .unwrap();
+    fs::write(
+        root.path().join("presentation/page.html"),
+        "{{ title }}|{% if previous %}{{ previous.title }}{% endif %}|{% if next %}{{ next.title }}{% endif %}",
+    )
+    .unwrap();
+    let result = evaluate(root.path()).unwrap();
+    let rendered = result
+        .output
+        .entries
+        .iter()
+        .find_map(|entry| {
+            (entry.relative_path == std::path::Path::new("older/index.html")).then(|| match &entry
+                .content
+            {
+                OutputContent::Bytes(bytes) => String::from_utf8_lossy(bytes).into_owned(),
+                OutputContent::CopyFile { .. } => String::new(),
+            })
+        })
+        .unwrap();
+    assert_eq!(rendered, "Older||Newer");
 }
 
 #[test]
@@ -60,9 +162,14 @@ fn conventional_assets_are_preserved_and_planned_as_copies() {
     )
     .unwrap();
     fs::write(root.path().join("assets/favicon.ico"), [0_u8, 1, 2, 3]).unwrap();
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    png.extend_from_slice(&[0, 0, 0, 13, b'I', b'H', b'D', b'R']);
+    png.extend_from_slice(&640_u32.to_be_bytes());
+    png.extend_from_slice(&480_u32.to_be_bytes());
+    fs::write(root.path().join("assets/hero.png"), png).unwrap();
 
     let result = evaluate(root.path()).unwrap();
-    assert_eq!(result.publication.assets.len(), 2);
+    assert_eq!(result.publication.assets.len(), 3);
     assert_eq!(
         result.publication.assets[0].relative_path,
         std::path::Path::new("css/site.css")
@@ -71,6 +178,12 @@ fn conventional_assets_are_preserved_and_planned_as_copies() {
         result.publication.assets[1].relative_path,
         std::path::Path::new("favicon.ico")
     );
+    assert_eq!(
+        result.publication.assets[2].mime.as_deref(),
+        Some("image/png")
+    );
+    assert_eq!(result.publication.assets[2].width, Some(640));
+    assert_eq!(result.publication.assets[2].height, Some(480));
 
     let css = result
         .output
@@ -103,10 +216,10 @@ fn asset_output_collision_is_rejected() {
     .unwrap();
 
     let failure = evaluate(root.path()).unwrap_err();
-    assert!(matches!(
-        failure.error,
-        AppError::Internal("Invalid output plan")
-    ));
+    let AppError::InvalidPublication(diagnostics) = failure.error else {
+        panic!("expected structured output diagnostic")
+    };
+    assert_eq!(diagnostics[0].code.0, "OUTPUT001");
 }
 
 #[test]

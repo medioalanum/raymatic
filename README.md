@@ -16,15 +16,15 @@ The intended boundary is simple: Raymatic owns incidental work such as parsing, 
 
 ## Current status
 
-Raymatic v0.1.0 is the first public release and supported experiment. The supported release artifact targets **macOS Apple Silicon** (`aarch64-apple-darwin`). The current implementation is a Rust 1.98.1 binary named `ray`; Rust is not required to run the release artifact.
+Raymatic v0.1.0 is the first public release and supported experiment. The published release artifact targets **macOS Apple Silicon** (`aarch64-apple-darwin`); the source and CI are also exercised on Linux and Windows. The current implementation is a Rust 1.98.1 binary named `ray`; Rust is not required to run a release artifact.
 
 The release supports a small Markdown publication convention, structured diagnostics, a local development loop, and deterministic static output. The scope is intentionally narrow and the behavior may change during the 0.x series.
 
 ## Install
 
-Download `raymatic-v0.1.0-aarch64-apple-darwin.tar.gz` from the [v0.1.0 release](https://github.com/medioalanum/raymatic/releases/tag/v0.1.0), verify its SHA-256 checksum, extract it, and place `ray` on your `PATH`.
+Download `raymatic-v0.1.0-aarch64-apple-darwin.tar.gz` from the [v0.1.0 release](https://github.com/medioalanum/raymatic/releases/tag/v0.1.0), verify its SHA-256 checksum, extract it, and place `ray` on your `PATH`. To package another target from source, use `scripts/package-release.sh` as described in [docs/RELEASE.md](docs/RELEASE.md).
 
-The complete installation steps and checksum workflow are in [docs/INSTALL.md](docs/INSTALL.md). Other operating systems and architectures are not supported by v0.1.0.
+The complete installation steps and checksum workflow are in [docs/INSTALL.md](docs/INSTALL.md). Prebuilt release availability is narrower than source/CI support; consult [the compatibility contract](docs/COMPATIBILITY.md) before choosing a target.
 
 ## Quick start
 
@@ -82,7 +82,7 @@ An invalid edit during `dev` leaves the last valid preview running. Fixing the s
 
 ## Scope and limitations
 
-The v0.1 publication model does not include asset copying, custom addressing, relative-link resolution, project configuration, plugins, themes, migration, RSS, sitemap generation, image processing, or a generalized build graph. Development uses coarse full-publication invalidation and the preview uses the fixed loopback address `127.0.0.1:3000`.
+The current publication model includes asset copying, explicit addresses, root-relative link canonicalization, native editorial metadata (`date`, `summary`, `category`, `tags`, `author`, and `draft`), and automatic sitemap, robots, RSS, Atom, archive, category, and tag outputs. Drafts remain available to authoring and validation but are excluded from production output and publication metadata. Image dimensions and `assets-manifest.json` are emitted; actual responsive derivatives and selective cached rebuilds remain future optimizations. Development currently classifies changes while safely rebuilding the publication and tries loopback ports `3000` through `3009`.
 
 These are current product boundaries, not promises about a roadmap. The [Pelican dogfooding report](DOGFOODING_01.md) records what a real publication exposed at those boundaries.
 
@@ -97,7 +97,7 @@ cargo test
 cargo build --release
 ```
 
-The package is `raymatic`; the executable is `ray`. The library is internal and is not a stable SDK. There is no async runtime, plugin architecture, cache, build graph, or public extension interface.
+The package is `raymatic`; the executable is `ray`. The library is internal and is not a stable SDK. There is no async runtime, plugin architecture, parsed-content/template cache, generalized build graph, or public extension interface.
 
 ## Documentation
 
@@ -108,6 +108,60 @@ The package is `raymatic`; the executable is `ray`. The library is internal and 
 - [Release evidence resolution](RELEASE_EVIDENCE_RESOLUTION.md)
 - [Dogfooding report](DOGFOODING_01.md)
 - [Pelican-to-Raymatic mapping](PELICAN_RAYMATIC_MAPPING.md)
+- [Performance benchmark methodology](docs/PERFORMANCE.md)
+- [Release confidence checks](docs/RELEASE.md)
+- [Compatibility contract](docs/COMPATIBILITY.md)
+- [Upgrade guide](docs/UPGRADING.md)
+- [Migration guide](docs/MIGRATION.md)
+- [Deployment recipes](docs/DEPLOYMENT.md)
+- [Publication model](docs/PUBLICATION_MODEL.md)
+- [Theming and presentations](docs/THEMING.md)
+- [Remaining roadmap](docs/ROADMAP_REMAINING.md)
+
+The release and upgrade contract is summarized in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) and [docs/UPGRADING.md](docs/UPGRADING.md).
+
+For a first-pass migration inventory, run `./scripts/migration-report.sh path/to/source-project`.
+
+## What Raymatic derives for you
+
+From a small Markdown document and its editorial metadata, Raymatic derives:
+
+- canonical content addresses and safe staged output;
+- archive, category, and tag pages;
+- RSS and Atom feeds, sitemap, and robots metadata;
+- Open Graph, Twitter, language, and canonical HTML metadata;
+- previous/next navigation and reading-time estimates;
+- copied assets with missing-file and alt-text diagnostics;
+- a development preview that keeps the last valid revision after an error.
+
+Every convention has an explicit escape hatch through front matter or a presentation template. The common path remains the four commands shown above.
+
+## Project structure
+
+```text
+content/                 Markdown publication sources
+presentation/            HTML presentations and intentional overrides
+assets/                  Static files copied to the site
+output/                  Complete production output from ray build
+```
+
+Generated projects include a short README and a small working publication. The repository's own documentation is built from `site/` with Raymatic in CI.
+
+## Diagnostics and recovery
+
+Diagnostics are stable, source-aware contracts. They identify the source path and span when available, explain the cause, state the expected form, and suggest recovery. Common failures include malformed front matter, missing titles, invalid dates, route collisions, unresolved links, missing assets, empty image alt text, and presentation errors. A failed check or build never replaces a previous complete output.
+
+## Performance and compatibility
+
+Run `cargo build --release && ./scripts/benchmark.sh` to measure cold build, warm build, one-file rebuild, and output size. See [the benchmark methodology](docs/PERFORMANCE.md) before comparing machines or generators. CI tests Linux, macOS, and Windows; the release artifact and supported target list remain the authoritative compatibility statement.
+
+## Contributing
+
+Keep changes in small vertical slices: implementation, realistic fixture or integration test, documentation, and CI evidence. Run `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`, and `cargo build --release` before opening a pull request. Product changes should preserve the `new → dev → check → build` workflow.
+
+## Security and support
+
+Please report security vulnerabilities privately through the repository's security contact rather than opening a public issue with exploit details. For usage questions and reproducible bugs, open an issue with the Raymatic version, operating system, command, source fixture, and diagnostic output. Do not include secrets or private publication content.
 
 ## License
 

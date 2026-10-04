@@ -77,6 +77,11 @@ fn new_creates_a_valid_publication_with_a_documented_structure() {
     for path in ["content/index.md", "presentation/page.html", "README.md"] {
         assert!(project.join(path).is_file(), "{path}");
     }
+    fs::write(
+        project.join("content/notes/recent.md"),
+        "+++\ntitle = \"A recent note\"\ndate = \"2026-10-04\"\nsummary = \"A generated index entry.\"\n+++\n\nA note.\n",
+    )
+    .unwrap();
     assert!(
         ray()
             .current_dir(&project)
@@ -94,6 +99,12 @@ fn new_creates_a_valid_publication_with_a_documented_structure() {
             .success()
     );
     assert!(project.join("output/index.html").is_file());
+    let html = fs::read_to_string(project.join("output/index.html")).unwrap();
+    assert!(html.contains("A recent note"));
+    assert!(html.contains("A generated index entry."));
+    assert!(html.contains("rel=\"canonical\""));
+    assert!(html.contains("property=\"og:title\""));
+    assert!(html.contains("name=\"twitter:card\""));
 }
 
 #[test]

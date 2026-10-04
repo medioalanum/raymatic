@@ -13,6 +13,157 @@ fn valid_content_renders_expected_static_html() {
 }
 
 #[test]
+fn successful_build_generates_sitemap_and_robots_without_drafts() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/draft.md"),
+        "+++\ntitle = \"Unreleased\"\ndraft = true\n+++\n\nThis must not publish.\n",
+    )
+    .unwrap();
+    let success = evaluate(root.path()).unwrap();
+    output::commit(root.path(), &success.output).unwrap();
+    let sitemap = fs::read_to_string(root.path().join("output/sitemap.xml")).unwrap();
+    assert!(sitemap.contains("<loc>/</loc>"));
+    assert!(!sitemap.contains("Unreleased"));
+    assert_eq!(
+        fs::read_to_string(root.path().join("output/robots.txt")).unwrap(),
+        "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n"
+    );
+    assert!(!root.path().join("output/draft/index.html").exists());
+    let rss = fs::read_to_string(root.path().join("output/feed.xml")).unwrap();
+    let atom = fs::read_to_string(root.path().join("output/atom.xml")).unwrap();
+    assert!(rss.contains("<rss version=\"2.0\">") && !rss.contains("Unreleased"));
+    assert!(atom.contains("http://www.w3.org/2005/Atom") && !atom.contains("Unreleased"));
+}
+
+#[test]
+fn invalid_editorial_date_has_a_recovery_diagnostic() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"Home\"\ndate = \"04/10/2026\"\n+++\n\nHome.\n",
+    )
+    .unwrap();
+    let AppError::InvalidPublication(diagnostics) = evaluate(root.path()).unwrap_err().error else {
+        panic!("expected publication diagnostics")
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.0 == "META001")
+        .unwrap();
+    assert!(diagnostic.summary.contains("date"));
+    assert!(
+        diagnostic
+            .expected
+            .as_deref()
+            .unwrap()
+            .contains("2026-10-04")
+    );
+    assert!(diagnostic.help.as_deref().unwrap().contains("Replace"));
+}
+
+#[test]
+fn missing_image_asset_has_a_source_aware_diagnostic() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"Home\"\n+++\n\n![Missing](/assets/missing.png)\n",
+    )
+    .unwrap();
+    let AppError::InvalidPublication(diagnostics) = evaluate(root.path()).unwrap_err().error else {
+        panic!("expected publication diagnostics")
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.0 == "ASSET001")
+        .unwrap();
+    assert_eq!(
+        diagnostic.primary.as_ref().unwrap().path,
+        root.path().join("content/index.md")
+    );
+    assert!(diagnostic.help.as_deref().unwrap().contains("assets/"));
+}
+
+#[test]
+fn image_query_strings_resolve_and_empty_alt_text_is_rejected() {
+    let root = fixture("valid");
+    fs::create_dir(root.path().join("assets")).unwrap();
+    fs::write(root.path().join("assets/photo.png"), [0_u8, 1, 2]).unwrap();
+    fs::write(
+        root.path().join("content/index.md"),
+        "+++\ntitle = \"Home\"\n+++\n\n![](/assets/photo.png?v=1#hero)\n",
+    )
+    .unwrap();
+    let AppError::InvalidPublication(diagnostics) = evaluate(root.path()).unwrap_err().error else {
+        panic!("expected publication diagnostics")
+    };
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code.0 == "ASSET002")
+    );
+    assert!(
+        !diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code.0 == "ASSET001")
+    );
+}
+
+#[test]
+fn output_collisions_are_structured_publication_diagnostics() {
+    let root = fixture("valid");
+    fs::create_dir(root.path().join("assets")).unwrap();
+    fs::write(root.path().join("assets/index.html"), "shadow").unwrap();
+    let AppError::InvalidPublication(diagnostics) = evaluate(root.path()).unwrap_err().error else {
+        panic!("expected output collision diagnostics")
+    };
+    let diagnostic = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code.0 == "OUTPUT001")
+        .unwrap();
+    assert!(
+        diagnostic
+            .explanation
+            .as_deref()
+            .unwrap()
+            .contains("index.html")
+    );
+    assert!(diagnostic.help.as_deref().unwrap().contains("Rename"));
+}
+
+#[test]
+fn successful_build_generates_archive_taxonomy_pages_and_feeds() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/notes.md"),
+        "+++\ntitle = \"Rust Notes\"\ndate = \"2026-10-04\"\nauthor = \"Raymatic Author\"\ncategory = \"Engineering\"\ntags = [\"rust\", \"publishing\"]\n+++\n\nA note.\n",
+    )
+    .unwrap();
+    let success = evaluate(root.path()).unwrap();
+    output::commit(root.path(), &success.output).unwrap();
+    assert!(root.path().join("output/archive/index.html").is_file());
+    let category =
+        fs::read_to_string(root.path().join("output/categories/engineering/index.html")).unwrap();
+    assert!(category.contains("Rust Notes"));
+    assert!(
+        root.path()
+            .join("output/categories/engineering/feed.xml")
+            .is_file()
+    );
+    assert!(root.path().join("output/tags/rust/index.html").is_file());
+    assert!(
+        root.path()
+            .join("output/tags/publishing/feed.xml")
+            .is_file()
+    );
+    assert!(
+        fs::read_to_string(root.path().join("output/feed.xml"))
+            .unwrap()
+            .contains("Raymatic Author")
+    );
+}
+
+#[test]
 fn malformed_front_matter_is_structured_and_source_aware() {
     let root = fixture("malformed");
     let failure = evaluate(root.path()).unwrap_err();

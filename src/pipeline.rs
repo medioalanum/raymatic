@@ -59,6 +59,7 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
     };
     let publication = timed(&mut timings.semantic, || Publication {
         root: root.into(),
+        site: discovered.site,
         content,
         presentation: crate::content::Presentation {
             source: SourceFile {
@@ -70,9 +71,15 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
         assets: discovered
             .assets
             .into_iter()
-            .map(|asset| Asset {
-                source: asset.path,
-                relative_path: asset.relative_path,
+            .map(|asset| {
+                let (mime, width, height) = crate::content::image_metadata(&asset.path);
+                Asset {
+                    source: asset.path,
+                    relative_path: asset.relative_path,
+                    mime,
+                    width,
+                    height,
+                }
             })
             .collect(),
     });
@@ -86,8 +93,44 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
     if !diagnostics.is_empty() {
         return failure(AppError::InvalidPublication(diagnostics), started, timings);
     }
+    let feed_entries = publication
+        .content
+        .iter()
+        .filter(|item| !item.attributes.draft)
+        .filter(|item| item.source.path != publication.root.join("content/index.md"))
+        .map(|item| crate::output::FeedEntry {
+            title: item.attributes.title.value.clone(),
+            summary: item
+                .attributes
+                .summary
+                .as_ref()
+                .map(|value| value.value.clone()),
+            date: item
+                .attributes
+                .date
+                .as_ref()
+                .map(|value| value.value.clone()),
+            address: item.address.as_path().to_owned(),
+            category: item
+                .attributes
+                .category
+                .as_ref()
+                .map(|value| value.value.clone()),
+            tags: item.attributes.tags.clone(),
+            author: item
+                .attributes
+                .author
+                .as_ref()
+                .map(|value| value.value.clone()),
+        })
+        .collect::<Vec<_>>();
     let output = match timed(&mut timings.planning, || {
-        crate::output::plan(rendered, &publication.assets)
+        crate::output::plan_with_feeds(
+            rendered,
+            &publication.assets,
+            &feed_entries,
+            publication.site.base_url.as_deref(),
+        )
     }) {
         Ok(v) => v,
         Err(e) => return failure(e, started, timings),
@@ -128,7 +171,11 @@ fn render_pages(
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Vec<(String, PathBuf, crate::content::Address)> {
     let mut pages = vec![];
-    for content in &publication.content {
+    for content in publication
+        .content
+        .iter()
+        .filter(|content| !content.attributes.draft)
+    {
         let (path, template) = match resolve_presentation(publication, content) {
             Ok(v) => v,
             Err(d) => {
@@ -137,7 +184,20 @@ fn render_pages(
             }
         };
         let recent = recent_entries(publication);
-        match crate::render::page(content, &path, &template, &recent) {
+        let position = recent
+            .iter()
+            .position(|entry| entry.address == content.address.as_path());
+        let previous = position.and_then(|index| recent.get(index + 1));
+        let next = position.and_then(|index| index.checked_sub(1).and_then(|i| recent.get(i)));
+        match crate::render::page(
+            content,
+            &path,
+            &template,
+            &recent,
+            previous,
+            next,
+            &publication.site,
+        ) {
             Ok(html) => pages.push((html, content.source.path.clone(), content.address.clone())),
             Err(d) => diagnostics.push(*d),
         }
@@ -149,7 +209,9 @@ fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEn
     let mut entries: Vec<_> = publication
         .content
         .iter()
-        .filter(|item| item.source.path != publication.root.join("content/index.md"))
+        .filter(|item| {
+            item.source.path != publication.root.join("content/index.md") && !item.attributes.draft
+        })
         .map(|item| crate::render::PublicationEntry {
             title: item.attributes.title.value.clone(),
             date: item
@@ -168,18 +230,7 @@ fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEn
                 .category
                 .as_ref()
                 .map(|value| value.value.clone()),
-            tags: item
-                .attributes
-                .custom
-                .get("tags")
-                .and_then(|value| value.as_array())
-                .map(|values| {
-                    values
-                        .iter()
-                        .filter_map(|value| value.as_str().map(str::to_owned))
-                        .collect()
-                })
-                .unwrap_or_default(),
+            tags: item.attributes.tags.clone(),
             summary: item
                 .attributes
                 .summary
