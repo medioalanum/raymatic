@@ -26,6 +26,7 @@ jobs:
         run: cargo build --release
       - name: Build website with Raymatic
         run: ../target/release/ray check
+        working-directory: site
       - name: Build website with Raymatic
         run: ../target/release/ray build
         working-directory: site

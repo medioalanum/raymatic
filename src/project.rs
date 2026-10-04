@@ -19,12 +19,12 @@ const DEFAULT_PAGE_TEMPLATE: &str = r###"<!doctype html>
     <meta name="twitter:card" content="{{ twitter_card }}">
     <title>{{ title }} · Raymatic</title>
     <style>
-      :root{color-scheme:light;font-family:Georgia,serif;color:#202020;background:#f7f5f0}
-      body{margin:0;line-height:1.7}.shell{max-width:760px;margin:0 auto;padding:1.25rem}
-      .site-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #d8d2c5}
-      .wordmark{color:#202020;font:700 1.4rem system-ui,sans-serif;text-decoration:none}nav a{margin-left:1rem;color:#555;font:.9rem system-ui,sans-serif}
-      main{padding-top:2.5rem}h1,h2{line-height:1.2}h1{font-size:2.2rem}a{color:#9a5c00}.post-meta{color:#716b60;font:.9rem system-ui,sans-serif}
-      code,pre{background:#ece8df}code{padding:.1rem .25rem}pre{padding:1rem;overflow-x:auto}footer{margin-top:5rem;border-top:1px solid #d8d2c5;color:#716b60;font:.9rem system-ui,sans-serif}
+      :root{color-scheme:dark;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#e9e7df;background:#111110;--surface:#171715;--muted:#94938b;--border:#30302c;--link:#d2a550}
+      *{box-sizing:border-box}body{margin:0;line-height:1.7}.shell{width:min(100% - 32px,960px);margin:0 auto;padding:1.25rem}
+      .site-header{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border)}
+      .wordmark{color:#e9e7df;font-weight:650;letter-spacing:.05em;text-decoration:none}nav a{margin-left:1rem;color:var(--muted);font-size:.85rem;text-decoration:none}a{color:var(--link)}
+      main{padding-top:3rem;min-height:60vh}h1,h2{line-height:1.15;letter-spacing:-.05em}h1{font-size:clamp(2.4rem,7vw,4rem)}.post-meta{color:var(--muted);font-size:.85rem}
+      code,pre{background:var(--surface)}code{padding:.1rem .25rem}pre{padding:1rem;overflow-x:auto;border:1px solid var(--border)}footer{margin-top:5rem;border-top:1px solid var(--border);color:var(--muted);font-size:.8rem}
     </style>
   </head>
   <body><header class="site-header shell"><a class="wordmark" href="/">{{ site_title }}</a><nav><a href="/archive/">Archive</a><a href="/feed.xml">Feed</a></nav></header><main class="shell">{{ body }}</main><footer class="shell">Published with {{ site_title }}.</footer></body>
@@ -34,6 +34,29 @@ const DEFAULT_PAGE_TEMPLATE: &str = r###"<!doctype html>
 const DEFAULT_INDEX_TEMPLATE: &str = r###"<!doctype html>
 <html lang="{{ language }}"><head><meta charset="utf-8"><meta name="description" content="{{ description }}"><link rel="canonical" href="{{ canonical_url }}"><meta property="og:type" content="{{ og_type }}"><meta property="og:title" content="{{ og_title }}"><meta property="og:description" content="{{ og_description }}"><meta name="twitter:card" content="{{ twitter_card }}"><title>{{ title }}</title></head>
 <body><header class="site-header shell"><a class="wordmark" href="/">{{ site_title }}</a><nav><a href="/archive/">Archive</a><a href="/feed.xml">Feed</a>{% for link in social_links %} <a href="{{ link }}">Social</a>{% endfor %}</nav></header><main class="shell">{{ body }}{% if recent %}<section><h2>Recent</h2><ul>{% for entry in recent %}<li><a href="{{ entry.address }}">{{ entry.title }}</a>{% if entry.summary %} — {{ entry.summary }}{% endif %}</li>{% endfor %}</ul></section>{% endif %}</main><footer class="shell">Published with {{ site_title }}.</footer></body></html>
+"###;
+
+const MIT_LICENSE: &str = r###"MIT License
+
+Copyright (c) 2026 Alan Viana
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 "###;
 
 #[derive(Debug, thiserror::Error)]
@@ -268,6 +291,7 @@ fn write_initial_files(root: &Path) -> Result<(), EnvironmentError> {
             "site.toml",
             "title = \"Raymatic publication\"\nauthor = \"\"\ndescription = \"A publication built with Raymatic.\"\nlanguage = \"en\"\n\n# Set base_url when deploying to a public domain.\n",
         ),
+        ("LICENSE", MIT_LICENSE),
     ] {
         let path = root.join(relative_path);
         fs::write(&path, content).map_err(|source| EnvironmentError::Inspect { path, source })?;
