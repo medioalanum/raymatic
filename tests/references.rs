@@ -33,6 +33,23 @@ fn reference_resolves_to_explicit_address_instead_of_source_path() {
 }
 
 #[test]
+fn content_relative_reference_resolves_from_the_source_directory() {
+    let root = project();
+    fs::create_dir(root.path().join("content/notes")).unwrap();
+    write_content(
+        root.path(),
+        "notes/index.md",
+        "Notes",
+        "Read [the guide](guide#part).",
+    );
+    write_content(root.path(), "notes/guide.md", "Guide", "Guide.");
+
+    let result = evaluate(root.path()).unwrap();
+    let html = rendered_page(&result, "notes/index.html");
+    assert!(html.contains("href=\"/notes/guide/#part\""));
+}
+
+#[test]
 fn broken_internal_reference_reports_the_source_target() {
     let root = project();
     write_content(

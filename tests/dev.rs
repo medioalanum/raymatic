@@ -12,6 +12,12 @@ fn invalid_edit_keeps_last_preview_and_fix_recovers_with_new_revision() {
     let first_preview =
         fs::read_to_string(root.path().join(".raymatic-preview/index.html")).unwrap();
     assert_eq!(state.revision, 1);
+    assert!(state.last_rebuild.is_some());
+    assert_eq!(
+        rebuild_once(root.path(), &mut state).unwrap(),
+        Rebuild::Unchanged
+    );
+    assert_eq!(state.revision, 1);
 
     fs::write(
         root.path().join("content/index.md"),
@@ -28,6 +34,7 @@ fn invalid_edit_keeps_last_preview_and_fix_recovers_with_new_revision() {
         first_preview
     );
     assert_eq!(state.last_diagnostics[0].code.0, "CONTENT002");
+    assert!(state.last_rebuild.is_some());
 
     fs::write(
         root.path().join("content/index.md"),
