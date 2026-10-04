@@ -331,7 +331,6 @@ mod tests {
             "+++\ntitle = \"Rust\"\naddress = \"/notes/rust/\"\n+++\n\n# Ownership\n",
         )
         .unwrap();
-        fs::create_dir(root.join("assets")).unwrap();
         fs::write(root.join("assets/example.txt"), "static example").unwrap();
         let mut state = DevState::default();
         assert_eq!(rebuild_once(&root, &mut state).unwrap(), Rebuild::Updated);
