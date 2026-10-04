@@ -1,0 +1,6 @@
+title = "Raymatic documentation"
+author = "Raymatic contributors"
+description = "Convention-first static publishing documentation."
+language = "en"
+base_url = "https://medioalanum.github.io/raymatic"
+social_links = ["https://github.com/medioalanum/raymatic"]
