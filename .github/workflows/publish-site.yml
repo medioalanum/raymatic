@@ -24,6 +24,8 @@ jobs:
           toolchain: 1.98.1
       - name: Build Raymatic
         run: cargo build --release
+      - name: Sync project documentation into the Raymatic site
+        run: ./scripts/sync-docs-site.sh
       - name: Build website with Raymatic
         run: ../target/release/ray check
         working-directory: site
