@@ -184,8 +184,9 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
         !ray()
             .current_dir(root.path())
             .args(["migrate", "import", "pelican", "strict-import"])
-            .status()
+            .output()
             .unwrap()
+            .status
             .success()
     );
     assert!(
