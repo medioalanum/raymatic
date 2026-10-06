@@ -19,13 +19,13 @@ The intended boundary is simple: Raymatic owns incidental work such as parsing, 
 
 ## Current status
 
-Raymatic v0.1.0 is the first public release and supported experiment. The published release artifact targets **macOS Apple Silicon** (`aarch64-apple-darwin`); the source and CI are also exercised on Linux and Windows. The current implementation is a Rust 1.98.1 binary named `ray`; Rust is not required to run a release artifact.
+Raymatic v0.2.0 is the current public release. The published release artifact targets **macOS Apple Silicon** (`aarch64-apple-darwin`); the source and CI are also exercised on Linux and Windows. The current implementation is a Rust 1.98.1 binary named `ray`; Rust is not required to run a release artifact.
 
 The release supports a small Markdown publication convention, structured diagnostics, a local development loop, and deterministic static output. The scope is intentionally narrow and the behavior may change during the 0.x series.
 
 ## Install
 
-Download `raymatic-v0.1.0-aarch64-apple-darwin.tar.gz` from the [v0.1.0 release](https://github.com/medioalanum/raymatic/releases/tag/v0.1.0), verify its SHA-256 checksum, extract it, and place `ray` on your `PATH`. To package another target from source, use `scripts/package-release.sh` as described in [docs/RELEASE.md](https://github.com/medioalanum/raymatic/blob/main/RELEASE.md).
+Download `raymatic-v0.2.0-aarch64-apple-darwin.tar.gz` from the [v0.2.0 release](https://github.com/medioalanum/raymatic/releases/tag/v0.2.0), verify its SHA-256 checksum, extract it, and place `ray` on your `PATH`. To package another target from source, use `scripts/package-release.sh` as described in [docs/RELEASE.md](https://github.com/medioalanum/raymatic/blob/main/RELEASE.md).
 
 The complete installation steps and checksum workflow are in [docs/INSTALL.md](https://github.com/medioalanum/raymatic/blob/main/INSTALL.md). Prebuilt release availability is narrower than source/CI support; consult [the compatibility contract](https://github.com/medioalanum/raymatic/blob/main/COMPATIBILITY.md) before choosing a target.
 

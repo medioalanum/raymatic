@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${RAY_VERSION:-0.1.0}"
+version="${RAY_VERSION:-0.2.0}"
 target="${1:-}"
 if [[ -z "$target" ]]; then
-  echo "usage: RAY_VERSION=0.1.0 $0 <target-triple>" >&2
+  echo "usage: RAY_VERSION=0.2.0 $0 <target-triple>" >&2
   exit 2
 fi
 binary="target/$target/release/ray"

@@ -26,6 +26,7 @@ title = "Reference documentation"
 <li><a href="/raymatic/reference/release-evidence-resolution/">RELEASE EVIDENCE RESOLUTION</a><small> — RELEASE_EVIDENCE_RESOLUTION.md</small></li>
 <li><a href="/raymatic/reference/release-hardening-report/">RELEASE HARDENING REPORT</a><small> — RELEASE_HARDENING_REPORT.md</small></li>
 <li><a href="/raymatic/reference/release-notes-v0.1.0/">RELEASE NOTES V0.1.0</a><small> — RELEASE_NOTES_v0.1.0.md</small></li>
+<li><a href="/raymatic/reference/release-notes-v0.2.0/">RELEASE NOTES V0.2.0</a><small> — RELEASE_NOTES_v0.2.0.md</small></li>
 <li><a href="/raymatic/reference/docs-bootstrap/">BOOTSTRAP</a><small> — docs/BOOTSTRAP.md</small></li>
 <li><a href="/raymatic/reference/docs-compatibility/">COMPATIBILITY</a><small> — docs/COMPATIBILITY.md</small></li>
 <li><a href="/raymatic/reference/docs-deployment/">DEPLOYMENT</a><small> — docs/DEPLOYMENT.md</small></li>
