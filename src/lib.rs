@@ -60,8 +60,10 @@ pub fn run(command: Command, cwd: &Path) -> Result<(), AppError> {
             print!("{}", migration::inspect(&cwd.join(path))?);
             Ok(())
         }
-        Command::MigrateImport { path, destination } => {
-            migration::import(&cwd.join(path), &cwd.join(destination))
-        }
+        Command::MigrateImport {
+            path,
+            destination,
+            generate_alt_text,
+        } => migration::import(&cwd.join(path), &cwd.join(destination), generate_alt_text),
     }
 }

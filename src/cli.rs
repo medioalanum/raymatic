@@ -1,16 +1,24 @@
 //! Command syntax only; publication semantics belong to the shared pipeline.
 use std::path::PathBuf;
 
-use clap::{Arg, Command as ClapCommand, value_parser};
+use clap::{Arg, ArgAction, Command as ClapCommand, value_parser};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
-    New { path: PathBuf },
+    New {
+        path: PathBuf,
+    },
     Dev,
     Check,
     Build,
-    MigrateInspect { path: PathBuf },
-    MigrateImport { path: PathBuf, destination: PathBuf },
+    MigrateInspect {
+        path: PathBuf,
+    },
+    MigrateImport {
+        path: PathBuf,
+        destination: PathBuf,
+        generate_alt_text: bool,
+    },
 }
 
 pub fn definition() -> ClapCommand {
@@ -46,6 +54,14 @@ pub fn definition() -> ClapCommand {
                 .subcommand(
                     ClapCommand::new("import")
                         .about("Import into a new directory")
+                        .arg(
+                            Arg::new("generate-alt-text")
+                                .long("generate-alt-text")
+                                .action(ArgAction::SetTrue)
+                                .help(
+                                    "Fill empty image alt text with a deterministic filename label",
+                                ),
+                        )
                         .arg(
                             Arg::new("path")
                                 .required(true)
@@ -88,6 +104,7 @@ pub fn parse() -> Command {
                     .get_one::<PathBuf>("destination")
                     .expect("required by clap")
                     .clone(),
+                generate_alt_text: values.get_flag("generate-alt-text"),
             },
             _ => unreachable!("clap requires a declared subcommand"),
         },

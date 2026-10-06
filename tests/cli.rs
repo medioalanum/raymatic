@@ -151,7 +151,7 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     fs::write(source.join("content/img/logo.txt"), "logo").unwrap();
     fs::write(
         source.join("content/yaml.md"),
-        "\u{feff}---\ntitle: >-\n    YAML: migration\n    title\nauthors:\n    - Ada Lovelace\ntags:\n    - rust\n    - publishing\ndate: 2026-10-06 10:00\n---\n\n![Logo]({static}/img/logo.txt \"Raymatic logo\")\n\n[Download]({static}/img/logo.txt) [Self]({filename}yaml.md) [About]({filename}/pages/about.md)\n",
+        "\u{feff}---\ntitle: >-\n    YAML: migration\n    title\nauthors:\n    - Ada Lovelace\ntags:\n    - rust\n    - publishing\ndate: 2026-10-06 10:00\n---\n\n![Logo]({static}/img/logo.txt \"Raymatic logo\") ![]({static}/img/logo.txt)\n\n[Download]({static}/img/logo.txt) [Self]({filename}yaml.md) [About]({filename}/pages/about.md)\n",
     )
     .unwrap();
     fs::write(source.join("content/logo.txt"), "asset").unwrap();
@@ -181,9 +181,23 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
         before
     );
     assert!(
+        !ray()
+            .current_dir(root.path())
+            .args(["migrate", "import", "pelican", "strict-import"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(
         ray()
             .current_dir(root.path())
-            .args(["migrate", "import", "pelican", "imported"])
+            .args([
+                "migrate",
+                "import",
+                "--generate-alt-text",
+                "pelican",
+                "imported",
+            ])
             .status()
             .unwrap()
             .success()
@@ -201,6 +215,7 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     assert!(yaml_imported.contains("author = \"Ada Lovelace\""));
     assert!(yaml_imported.contains("tags = [\"rust\", \"publishing\"]"));
     assert!(yaml_imported.contains("![Logo](/assets/img/logo.txt \"Raymatic logo\")"));
+    assert!(yaml_imported.contains("![Image: logo](/assets/img/logo.txt)"));
     assert!(yaml_imported.contains("[Download](/assets/img/logo.txt)"));
     assert!(yaml_imported.contains("[Self](yaml/)"));
     assert!(yaml_imported.contains("[About](/about/)"));

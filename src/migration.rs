@@ -65,7 +65,7 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
     Ok(report)
 }
 
-pub fn import(source: &Path, destination: &Path) -> Result<(), AppError> {
+pub fn import(source: &Path, destination: &Path, generate_alt_text: bool) -> Result<(), AppError> {
     let _ = inspect(source)?;
     let configuration = configuration(source)?;
     if destination.exists() && fs::read_dir(destination).map_err(io)?.next().is_some() {
@@ -99,7 +99,11 @@ pub fn import(source: &Path, destination: &Path) -> Result<(), AppError> {
         }
         fs::write(
             target,
-            convert(&fs::read_to_string(file).map_err(io)?, kind),
+            convert(
+                &fs::read_to_string(file).map_err(io)?,
+                kind,
+                generate_alt_text,
+            ),
         )
         .map_err(io)?;
     }
@@ -234,13 +238,13 @@ fn copy_portable_assets(root: &Path, directory: &Path, destination: &Path) -> Re
     Ok(())
 }
 
-fn convert(source: &str, kind: &str) -> String {
+fn convert(source: &str, kind: &str, generate_alt_text: bool) -> String {
     if let Some((front_matter, body)) = yaml_front_matter(source) {
         return format!(
             "+++\nkind = {:?}\n{}\n+++\n{}\n",
             kind,
             yaml_metadata(front_matter),
-            rewrite_markdown_links(body).replace("{static}/", "/assets/")
+            rewrite_body(body, generate_alt_text)
         );
     }
     let mut metadata = Vec::new();
@@ -291,7 +295,7 @@ fn convert(source: &str, kind: &str) -> String {
     format!(
         "+++\n{}\n+++\n{}\n",
         metadata.join("\n"),
-        rewrite_markdown_links(&body.join("\n"))
+        rewrite_body(&body.join("\n"), generate_alt_text)
     )
 }
 
@@ -370,17 +374,74 @@ fn rewrite_markdown_links(body: &str) -> String {
         .replace(".md#", "/#")
         .replace(".md)", "/)")
 }
+
+fn rewrite_body(body: &str, generate_alt_text: bool) -> String {
+    let body = rewrite_markdown_links(body).replace("{static}/", "/assets/");
+    if generate_alt_text {
+        generated_alt_text(&body)
+    } else {
+        body
+    }
+}
+
+fn generated_alt_text(body: &str) -> String {
+    let mut out = String::new();
+    let mut remaining = body;
+    while let Some(index) = remaining.find("![](") {
+        out.push_str(&remaining[..index]);
+        let after = &remaining[index + 4..];
+        let Some(close) = after.find(')') else {
+            out.push_str("![](");
+            out.push_str(after);
+            return out;
+        };
+        let target = after[..close].split_whitespace().next().unwrap_or("");
+        out.push_str("![");
+        out.push_str(&alt_label(target));
+        out.push_str("](");
+        out.push_str(&after[..close + 1]);
+        remaining = &after[close + 1..];
+    }
+    out.push_str(remaining);
+    out
+}
+
+fn alt_label(target: &str) -> String {
+    let name = target
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(target)
+        .rsplit('/')
+        .next()
+        .unwrap_or("")
+        .rsplit_once('.')
+        .map_or_else(|| target.rsplit('/').next().unwrap_or(""), |(stem, _)| stem);
+    let name = name.replace(['-', '_'], " ");
+    if name.trim().is_empty() {
+        "Image".into()
+    } else {
+        format!("Image: {name}")
+    }
+}
 fn io(error: std::io::Error) -> AppError {
     AppError::Operational(error.to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::empty_image_alt_count;
+    use super::{empty_image_alt_count, generated_alt_text};
 
     #[test]
     fn detects_images_without_alt_text() {
         assert_eq!(empty_image_alt_count("![Diagram](diagram.png)"), 0);
         assert_eq!(empty_image_alt_count("![](one.png)\n![](two.png)"), 2);
+    }
+
+    #[test]
+    fn generates_deterministic_alt_text_only_for_empty_images() {
+        assert_eq!(
+            generated_alt_text("![](/assets/diagrams/t-model.svg) ![Existing](other.png)"),
+            "![Image: t model](/assets/diagrams/t-model.svg) ![Existing](other.png)"
+        );
     }
 }

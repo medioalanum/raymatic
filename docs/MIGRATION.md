@@ -9,11 +9,17 @@ ray migrate inspect path/to/pelican-project
 ray migrate import path/to/pelican-project path/to/new-raymatic-project
 ```
 
+When a source has empty image alternative text and an explicitly mechanical label is acceptable, opt in with:
+
+```sh
+ray migrate import --generate-alt-text path/to/pelican-project path/to/new-raymatic-project
+```
+
 `inspect` is non-destructive. `import` requires a new or empty destination, writes a normal Raymatic project there, validates it with Raymatic before publishing the destination, and leaves the source untouched. The supported subset is conventional Markdown under `content/` with Pelican header metadata or YAML front matter. It maps title, date, category, tags, summary, a first author, slug, draft status, and slash-delimited aliases. Markdown under `content/pages/` becomes native `kind = "page"`; other Markdown becomes `kind = "article"`. Non-Markdown files under `content/` are copied to `assets/`, except the source `theme/` tree.
 
-The importer converts `{static}/` links to `/assets/`, normalizes Pelican `{filename}` references, and rewrites local Markdown and `.html` links to Raymatic addresses. It statically maps literal `SITENAME`, `AUTHOR`, `SITESUBTITLE`, `DEFAULT_LANG`, and `SITEURL` settings to `site.toml`; it never executes either configuration file. Inspection reports detected plugins, themes, URL patterns, static-path configuration, and image references without alternative text before import.
+The importer converts `{static}/` links to `/assets/`, normalizes Pelican `{filename}` references, and rewrites local Markdown and `.html` links to Raymatic addresses. It statically maps literal `SITENAME`, `AUTHOR`, `SITESUBTITLE`, `DEFAULT_LANG`, and `SITEURL` settings to `site.toml`; it never executes either configuration file. Inspection reports detected plugins, themes, URL patterns, static-path configuration, and image references without alternative text before import. `--generate-alt-text` changes only empty image descriptions to the deterministic form `Image: filename`; retain the default strict mode when editorial accessibility review is required.
 
-Themes, plugins, static-path selection, template behavior, generated output, arbitrary configuration, non-slash legacy URL preservation, and visual parity remain review items. Empty image alternative text is a validation error: the importer deliberately does not invent accessibility descriptions.
+Themes, plugins, static-path selection, template behavior, generated output, arbitrary configuration, non-slash legacy URL preservation, and visual parity remain review items. Empty image alternative text is a validation error in the default strict mode; the importer generates mechanical labels only with the explicit flag above.
 
 The repository includes an advisory inventory script:
 
