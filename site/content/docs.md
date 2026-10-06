@@ -5,7 +5,7 @@ title = "Documentation"
 <div class="doc">
 <div class="eyebrow">documentation</div>
 <h1>Build a publication, not a publishing system.</h1>
-<p>Raymatic v0.1.0 is a convention-first static publisher. This guide documents the behavior that exists today across the source project, CI, and release workflow.</p>
+<p>Raymatic v0.2.0 is a convention-first static publisher. This guide documents the behavior that exists today across the source project, CI, and release workflow.</p>
 
 <h2 id="getting-started">Getting started</h2>
 <pre>$ ray new my-site

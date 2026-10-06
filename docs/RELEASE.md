@@ -16,7 +16,7 @@ To package a locally built target:
 
 ```sh
 cargo build --release --target aarch64-apple-darwin
-RAY_VERSION=0.1.0 ./scripts/package-release.sh aarch64-apple-darwin
+RAY_VERSION=0.2.0 ./scripts/package-release.sh aarch64-apple-darwin
 ```
 
 The corresponding compatibility and upgrade rules are documented in [COMPATIBILITY.md](COMPATIBILITY.md) and [UPGRADING.md](UPGRADING.md).

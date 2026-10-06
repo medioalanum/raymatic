@@ -6,12 +6,12 @@ title = "INSTALL"
 This validation build supports **macOS on Apple Silicon** (`aarch64-apple-darwin`).
 It is a standalone executable named `ray`; Rust is not required to run it.
 
-1. Download `raymatic-v0.1.0-aarch64-apple-darwin.tar.gz` from the release.
+1. Download `raymatic-v0.2.0-aarch64-apple-darwin.tar.gz` from the release.
 2. Verify its SHA-256 against the release checksum.
 3. Extract the archive and move `ray` to a directory on your `PATH`:
 
    ```sh
-   tar -xzf raymatic-v0.1.0-aarch64-apple-darwin.tar.gz
+   tar -xzf raymatic-v0.2.0-aarch64-apple-darwin.tar.gz
    mkdir -p "$HOME/.local/bin"
    mv ray "$HOME/.local/bin/ray"
    export PATH="$HOME/.local/bin:$PATH"
