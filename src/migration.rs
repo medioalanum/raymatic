@@ -31,9 +31,16 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
         } else {
             "article"
         };
+        let text = fs::read_to_string(file).map_err(io)?;
+        let missing_alt = empty_image_alt_count(&text);
+        let accessibility = if missing_alt == 0 {
+            String::new()
+        } else {
+            format!("; {missing_alt} image(s) need alt text")
+        };
         report.push_str(&format!(
-            "| `{}` | transformable | Markdown to native {kind}; inspect unsupported links |\n",
-            relative.display()
+            "| `{}` | transformable | Markdown to native {kind}; inspect unsupported links{accessibility} |\n",
+            relative.display(),
         ));
     }
     report.push_str("\n## Static configuration findings\n\n");
@@ -184,6 +191,11 @@ fn markdown_files(root: &Path) -> Result<Vec<PathBuf>, AppError> {
     out.sort();
     Ok(out)
 }
+
+fn empty_image_alt_count(source: &str) -> usize {
+    source.match_indices("![](").count()
+}
+
 fn walk(root: &Path, directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), AppError> {
     for entry in fs::read_dir(directory).map_err(io)? {
         let path = entry.map_err(io)?.path();
@@ -360,4 +372,15 @@ fn rewrite_markdown_links(body: &str) -> String {
 }
 fn io(error: std::io::Error) -> AppError {
     AppError::Operational(error.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::empty_image_alt_count;
+
+    #[test]
+    fn detects_images_without_alt_text() {
+        assert_eq!(empty_image_alt_count("![Diagram](diagram.png)"), 0);
+        assert_eq!(empty_image_alt_count("![](one.png)\n![](two.png)"), 2);
+    }
 }
