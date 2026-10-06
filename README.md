@@ -113,10 +113,11 @@ The package is `raymatic`; the executable is `ray`. The library is internal and 
 - [Compatibility contract](docs/COMPATIBILITY.md)
 - [Upgrade guide](docs/UPGRADING.md)
 - [Migration guide](docs/MIGRATION.md)
+- [Migration Readiness evidence](docs/MIGRATION_READINESS.md)
 - [Deployment recipes](docs/DEPLOYMENT.md)
 - [Publication model](docs/PUBLICATION_MODEL.md)
 - [Theming and presentations](docs/THEMING.md)
-- [Remaining roadmap](docs/ROADMAP_REMAINING.md)
+- [Project roadmap](docs/ROADMAP.md)
 
 The release and upgrade contract is summarized in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) and [docs/UPGRADING.md](docs/UPGRADING.md).
 
