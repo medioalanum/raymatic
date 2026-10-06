@@ -139,7 +139,7 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     .unwrap();
     fs::write(
         source.join("content/hello.md"),
-        "Title: Hello\nDate: 2026-10-06\nTags: rust, publishing\nSlug: hello\n\nHello world.\n",
+        "Title: Hello\nDate: 2026-10-06 10:00\nStatus: draft\nTags: rust, publishing\nSlug: hello\nAlias: /old-hello/\n\nHello world.\n",
     )
     .unwrap();
     fs::write(
@@ -173,6 +173,9 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     let imported = fs::read_to_string(root.path().join("imported/content/hello.md")).unwrap();
     assert!(imported.contains("title = \"Hello\""));
     assert!(imported.contains("address = \"/hello/\""));
+    assert!(imported.contains("date = \"2026-10-06\""));
+    assert!(imported.contains("draft = true"));
+    assert!(imported.contains("aliases = [\"/old-hello/\"]"));
     assert!(
         fs::read_to_string(root.path().join("imported/content/about.md"))
             .unwrap()

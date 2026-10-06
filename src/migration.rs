@@ -214,8 +214,14 @@ fn convert(source: &str, kind: &str) -> String {
             if let Some((key, value)) = line.split_once(':') {
                 let value = value.trim();
                 match key.trim().to_ascii_lowercase().as_str() {
-                    "title" | "date" | "category" | "summary" | "author" => {
+                    "title" | "category" | "summary" | "author" => {
                         metadata.push(format!("{} = {:?}", key.trim().to_ascii_lowercase(), value))
+                    }
+                    "date" => {
+                        metadata.push(format!("date = {:?}", value.get(..10).unwrap_or(value)))
+                    }
+                    "status" if value.eq_ignore_ascii_case("draft") => {
+                        metadata.push("draft = true".into())
                     }
                     "tags" => metadata.push(format!(
                         "tags = {:?}",
@@ -226,6 +232,16 @@ fn convert(source: &str, kind: &str) -> String {
                             .collect::<Vec<_>>()
                     )),
                     "slug" => metadata.push(format!("address = {:?}", format!("/{}/", value))),
+                    "alias" | "aliases" => {
+                        let aliases = value
+                            .split(',')
+                            .map(str::trim)
+                            .filter(|value| value.starts_with('/') && value.ends_with('/'))
+                            .collect::<Vec<_>>();
+                        if !aliases.is_empty() {
+                            metadata.push(format!("aliases = {aliases:?}"));
+                        }
+                    }
                     _ => {}
                 };
                 continue;
