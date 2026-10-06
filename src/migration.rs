@@ -23,14 +23,20 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
         "Raymatic migration inspection\nsource: Pelican\npath: {}\n\n",
         source.display()
     );
-    report.push_str("Preserve with transformation:\n");
+    report.push_str("## Content findings\n\n| Source | Classification | Native handling |\n| --- | --- | --- |\n");
     for file in &files {
+        let relative = file.strip_prefix(source).expect("discovered under source");
+        let kind = if relative.starts_with("content/pages") {
+            "page"
+        } else {
+            "article"
+        };
         report.push_str(&format!(
-            "- {}: Markdown content; inspect metadata and links before import\n",
-            file.strip_prefix(source).unwrap().display()
+            "| `{}` | transformable | Markdown to native {kind}; inspect unsupported links |\n",
+            relative.display()
         ));
     }
-    report.push_str("\nStatic configuration findings:\n");
+    report.push_str("\n## Static configuration findings\n\n");
     for (key, value) in &configuration.values {
         report.push_str(&format!("- {key} = {value:?}: mapped to site.toml\n"));
     }
@@ -48,7 +54,7 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
             "- STATIC_PATHS: detected; only portable files discovered under content/ are copied\n",
         );
     }
-    report.push_str("\nReview required:\n- pelicanconf.py and publishconf.py are not executed\n- themes, plugins, templates, static-path selection, and generated output are not imported\n");
+    report.push_str("\n## Review required\n\n- pelicanconf.py and publishconf.py are not executed\n- themes, plugins, templates, static-path selection, and generated output are not imported\n");
     Ok(report)
 }
 
@@ -99,7 +105,7 @@ pub fn import(source: &Path, destination: &Path) -> Result<(), AppError> {
     fs::write(staging.join("presentation/index.html"), "<!doctype html><html><head><meta charset=\"utf-8\"><title>{{ title }}</title></head><body>{{ body }}</body></html>\n").map_err(io)?;
     fs::write(staging.join("MIGRATION_REPORT.md"), inspect(source)?).map_err(io)?;
     write_site_config(&staging, &configuration)?;
-    crate::pipeline::evaluate(&staging).map_err(|failure| AppError::from(failure))?;
+    crate::pipeline::evaluate(&staging).map_err(AppError::from)?;
     if destination.exists() {
         fs::remove_dir(destination).map_err(io)?;
     }

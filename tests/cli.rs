@@ -157,9 +157,18 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     assert!(inspected.status.success());
     let report = String::from_utf8(inspected.stdout).unwrap();
     assert!(report.contains("source: Pelican"));
+    assert!(
+        report.contains("| `content/pages/about.md` | transformable | Markdown to native page")
+    );
     assert!(report.contains("plugins: detected; not executed"));
     assert!(report.contains("URL or SAVE_AS pattern: detected"));
     assert!(report.contains("STATIC_PATHS: detected"));
+    let second_report = ray()
+        .current_dir(root.path())
+        .args(["migrate", "inspect", "pelican"])
+        .output()
+        .unwrap();
+    assert_eq!(report, String::from_utf8(second_report.stdout).unwrap());
     assert_eq!(
         fs::read_to_string(source.join("content/hello.md")).unwrap(),
         before
