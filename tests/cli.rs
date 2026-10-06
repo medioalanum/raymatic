@@ -126,3 +126,51 @@ fn new_refuses_to_replace_an_existing_project() {
     );
     assert_eq!(fs::read_to_string(target.join("keep.txt")).unwrap(), "keep");
 }
+
+#[test]
+fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
+    let root = tempfile::tempdir().unwrap();
+    let source = root.path().join("pelican");
+    fs::create_dir_all(source.join("content")).unwrap();
+    fs::write(source.join("pelicanconf.py"), "SITENAME = 'Example'\n").unwrap();
+    fs::write(
+        source.join("content/hello.md"),
+        "Title: Hello\nDate: 2026-10-06\nTags: rust, publishing\nSlug: hello\n\nHello world.\n",
+    )
+    .unwrap();
+    let before = fs::read_to_string(source.join("content/hello.md")).unwrap();
+    let inspected = ray()
+        .current_dir(root.path())
+        .args(["migrate", "inspect", "pelican"])
+        .output()
+        .unwrap();
+    assert!(inspected.status.success());
+    assert!(
+        String::from_utf8(inspected.stdout)
+            .unwrap()
+            .contains("source: Pelican")
+    );
+    assert_eq!(
+        fs::read_to_string(source.join("content/hello.md")).unwrap(),
+        before
+    );
+    assert!(
+        ray()
+            .current_dir(root.path())
+            .args(["migrate", "import", "pelican", "imported"])
+            .status()
+            .unwrap()
+            .success()
+    );
+    let imported = fs::read_to_string(root.path().join("imported/content/hello.md")).unwrap();
+    assert!(imported.contains("title = \"Hello\""));
+    assert!(imported.contains("address = \"/hello/\""));
+    assert!(
+        ray()
+            .current_dir(root.path().join("imported"))
+            .arg("check")
+            .status()
+            .unwrap()
+            .success()
+    );
+}

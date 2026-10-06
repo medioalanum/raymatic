@@ -9,6 +9,8 @@ pub enum Command {
     Dev,
     Check,
     Build,
+    MigrateInspect { path: PathBuf },
+    MigrateImport { path: PathBuf, destination: PathBuf },
 }
 
 pub fn definition() -> ClapCommand {
@@ -28,6 +30,34 @@ pub fn definition() -> ClapCommand {
         .subcommand(ClapCommand::new("dev").about("Preview and watch a publication"))
         .subcommand(ClapCommand::new("check").about("Validate a publication"))
         .subcommand(ClapCommand::new("build").about("Build a publication"))
+        .subcommand(
+            ClapCommand::new("migrate")
+                .about("Inspect or import a supported source publication")
+                .subcommand_required(true)
+                .subcommand(
+                    ClapCommand::new("inspect")
+                        .about("Inspect without writing")
+                        .arg(
+                            Arg::new("path")
+                                .required(true)
+                                .value_parser(value_parser!(PathBuf)),
+                        ),
+                )
+                .subcommand(
+                    ClapCommand::new("import")
+                        .about("Import into a new directory")
+                        .arg(
+                            Arg::new("path")
+                                .required(true)
+                                .value_parser(value_parser!(PathBuf)),
+                        )
+                        .arg(
+                            Arg::new("destination")
+                                .required(true)
+                                .value_parser(value_parser!(PathBuf)),
+                        ),
+                ),
+        )
 }
 
 pub fn parse() -> Command {
@@ -42,6 +72,25 @@ pub fn parse() -> Command {
         Some(("dev", _)) => Command::Dev,
         Some(("check", _)) => Command::Check,
         Some(("build", _)) => Command::Build,
+        Some(("migrate", args)) => match args.subcommand() {
+            Some(("inspect", values)) => Command::MigrateInspect {
+                path: values
+                    .get_one::<PathBuf>("path")
+                    .expect("required by clap")
+                    .clone(),
+            },
+            Some(("import", values)) => Command::MigrateImport {
+                path: values
+                    .get_one::<PathBuf>("path")
+                    .expect("required by clap")
+                    .clone(),
+                destination: values
+                    .get_one::<PathBuf>("destination")
+                    .expect("required by clap")
+                    .clone(),
+            },
+            _ => unreachable!("clap requires a declared subcommand"),
+        },
         _ => unreachable!("clap requires a declared subcommand"),
     }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add explicit home, page, and article roles plus static alias redirects.
+- Add bounded Pelican inspection and import commands for portable Markdown metadata.
+
 ## 0.1.0 — 2026-09-28
 
 First public release of Raymatic.

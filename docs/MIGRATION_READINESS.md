@@ -4,7 +4,7 @@
 
 This document defines the evidence required before Raymatic implements automatic source-project inspection or import. It does not claim support for Pelican, Hugo, Jekyll, or another generator.
 
-The current binary has no `ray migrate` command. `scripts/migration-report.sh` is an advisory heuristic and is not a compatibility analyzer.
+The current binary provides bounded Pelican inspection and import commands. They cover only the portable Markdown metadata documented in [MIGRATION.md](MIGRATION.md); they do not execute source configuration, plugins, templates, or hooks. Hugo and Jekyll remain readiness candidates.
 
 ## Decision to be made
 
@@ -15,7 +15,7 @@ The readiness phase must establish whether conventional publication intent from 
 - reject automation for a concept that is source-generator-specific;
 - defer an adapter because evidence is insufficient.
 
-Approval does not mean that an importer exists. It only authorizes the non-destructive inspection milestone in the roadmap.
+The initial approval resulted in the bounded Pelican workflow. Extending it requires the same evidence discipline and must not widen the support claim implicitly.
 
 ## Evidence record
 

@@ -5,6 +5,7 @@ pub mod cli;
 pub mod content;
 pub mod dev;
 pub mod diagnostic;
+pub mod migration;
 pub mod output;
 pub mod pipeline;
 pub mod project;
@@ -55,5 +56,12 @@ pub fn run(command: Command, cwd: &Path) -> Result<(), AppError> {
             output::commit(cwd, &success.output)
         }
         Command::Dev => dev::run(cwd),
+        Command::MigrateInspect { path } => {
+            print!("{}", migration::inspect(&cwd.join(path))?);
+            Ok(())
+        }
+        Command::MigrateImport { path, destination } => {
+            migration::import(&cwd.join(path), &cwd.join(destination))
+        }
     }
 }

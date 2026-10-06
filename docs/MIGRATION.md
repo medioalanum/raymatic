@@ -2,7 +2,14 @@
 
 ## Current status
 
-Raymatic does not yet provide an import command for Pelican, Hugo, Jekyll, or any other generator. The current migration workflow is manual and uses ordinary native Raymatic projects. Automatic migration is deferred until the publication model and representative-project evidence recorded in [MIGRATION_READINESS.md](MIGRATION_READINESS.md) are complete.
+Raymatic provides a deliberately bounded Pelican workflow. It never executes Pelican configuration, plugins, templates, themes, or hooks:
+
+```sh
+ray migrate inspect path/to/pelican-project
+ray migrate import path/to/pelican-project path/to/new-raymatic-project
+```
+
+`inspect` is non-destructive. `import` requires a new or empty destination, writes a normal Raymatic project there, and leaves the source untouched. The supported subset is Markdown articles with portable Pelican header metadata: title, date, category, tags, summary, author, and slug. Themes, plugins, static-path selection, template behavior, redirects, arbitrary configuration, and generated output remain review items.
 
 The repository includes an advisory inventory script:
 

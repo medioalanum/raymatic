@@ -43,7 +43,7 @@ ray check
 ray build
 ```
 
-The four commands are the product surface:
+The core commands are the product surface:
 
 ```text
 new → dev → check → build
@@ -58,6 +58,8 @@ The generated publication is written to `output/` only after a successful build.
 ```text
 ray new → ray dev → ray check → ray build
 ```
+
+For the documented Pelican subset, use `ray migrate inspect <source>` before `ray migrate import <source> <destination>`. Inspection never changes the source; import creates an ordinary Raymatic project in a new or empty destination.
 
 - `new` creates a valid starter publication.
 - `dev` serves the latest valid preview, watches `content/` and `presentation/`, rebuilds the small publication, and refreshes the browser when a valid revision is available.
@@ -135,7 +137,7 @@ From a small Markdown document and its editorial metadata, Raymatic derives:
 - copied assets with missing-file and alt-text diagnostics;
 - a development preview that keeps the last valid revision after an error.
 
-Every convention has an explicit escape hatch through front matter or a presentation template. The common path remains the four commands shown above.
+Every convention has an explicit escape hatch through front matter or a presentation template. The common path remains the core commands shown above.
 
 ## Project structure
 
