@@ -47,7 +47,7 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
                 let exists = publication
                     .assets
                     .iter()
-                    .any(|asset| asset.relative_path.to_string_lossy() == relative);
+                    .any(|asset| portable_asset_path(&asset.relative_path) == relative);
                 if !exists {
                     diagnostics.push(Diagnostic {
                         severity: Severity::Error,
@@ -223,6 +223,10 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
     diagnostics
 }
 
+fn portable_asset_path(path: &std::path::Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
 fn metadata_diagnostic(
     content: &crate::content::Content,
     span: &Option<crate::content::SourceSpan>,
@@ -248,5 +252,19 @@ fn metadata_diagnostic(
         }),
         expected: Some(expected.into()),
         help: Some(help.into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::portable_asset_path;
+    use std::path::Path;
+
+    #[test]
+    fn asset_paths_match_url_separators_on_every_platform() {
+        assert_eq!(
+            portable_asset_path(Path::new(r"img\logo.txt")),
+            "img/logo.txt"
+        );
     }
 }
