@@ -61,6 +61,16 @@ pub fn plan_with_feeds(
     feed_entries: &[FeedEntry],
     base_url: Option<&str>,
 ) -> Result<OutputPlan, AppError> {
+    plan_with_feeds_and_redirects(pages, assets, feed_entries, base_url, &[])
+}
+
+pub fn plan_with_feeds_and_redirects(
+    pages: Vec<(String, PathBuf, Address)>,
+    assets: &[Asset],
+    feed_entries: &[FeedEntry],
+    base_url: Option<&str>,
+    redirects: &[(Address, Address)],
+) -> Result<OutputPlan, AppError> {
     let absolute = |path: &str| absolute_url(base_url, path);
     let sitemap = sitemap(&pages, base_url);
     let mut entries: Vec<OutputEntry> = pages
@@ -79,6 +89,11 @@ pub fn plan_with_feeds(
         origin: OutputOrigin::Asset {
             source: asset.source.clone(),
         },
+    }));
+    entries.extend(redirects.iter().map(|(from, to)| OutputEntry {
+        relative_path: output_path(from),
+        content: OutputContent::Bytes(redirect_page(to.as_path()).into_bytes()),
+        origin: OutputOrigin::Generated,
     }));
     entries.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     entries.push(OutputEntry {
@@ -106,6 +121,21 @@ pub fn plan_with_feeds(
     let plan = OutputPlan { entries };
     validate(&plan)?;
     Ok(plan)
+}
+
+fn redirect_page(target: &str) -> String {
+    let mut html = String::from(
+        "<!doctype html><html><head><meta charset=\"utf-8\"><meta http-equiv=\"refresh\" content=\"0; url=",
+    );
+    escape_html_into(&mut html, target);
+    html.push_str("\"><link rel=\"canonical\" href=\"");
+    escape_html_into(&mut html, target);
+    html.push_str("\"></head><body><p>This page has moved to <a href=\"");
+    escape_html_into(&mut html, target);
+    html.push_str("\">");
+    escape_html_into(&mut html, target);
+    html.push_str("</a>.</p></body></html>\n");
+    html
 }
 
 fn add_archive_and_taxonomies(

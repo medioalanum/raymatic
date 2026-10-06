@@ -48,7 +48,7 @@ impl Address {
         }
     }
 
-    fn explicit(v: String) -> Result<Self, &'static str> {
+    pub fn explicit(v: String) -> Result<Self, &'static str> {
         if v == "/" {
             return Ok(Self(v));
         }
@@ -78,6 +78,7 @@ impl Address {
 #[derive(Deserialize)]
 struct FrontMatter {
     title: Option<String>,
+    kind: Option<String>,
     date: Option<String>,
     category: Option<String>,
     tags: Option<Vec<String>>,
@@ -91,6 +92,7 @@ struct FrontMatter {
     twitter_card: Option<String>,
     summary: Option<String>,
     address: Option<String>,
+    aliases: Option<Vec<String>>,
     presentation: Option<String>,
     #[serde(flatten)]
     custom: BTreeMap<String, toml::Value>,
@@ -140,6 +142,46 @@ pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, 
         }
         None => (Address::derive(relative), None),
     };
+    let kind = match a.kind.as_deref() {
+        Some("home") => ContentKind::Home,
+        Some("page") => ContentKind::Page,
+        Some("article") => ContentKind::Article,
+        Some(value) => {
+            return Err(Box::new(diagnostic(
+                "CONTENT003",
+                "Invalid content kind",
+                &source,
+                attribute_span("kind", &source).bytes,
+                Some(format!("`{value}` is not a supported content kind.")),
+                Some("kind = \"home\", \"page\", or \"article\""),
+                Some(
+                    "Use a supported content kind or remove the attribute to use the path convention.",
+                ),
+            )));
+        }
+        None if relative == std::path::Path::new("index.md") && address.as_path() == "/" => {
+            ContentKind::Home
+        }
+        None => ContentKind::Article,
+    };
+    let aliases = a
+        .aliases
+        .unwrap_or_default()
+        .into_iter()
+        .map(|value| {
+            Address::explicit(value).map_err(|reason| {
+                Box::new(diagnostic(
+                    "ADDR003",
+                    "Invalid alias address",
+                    &source,
+                    attribute_span("aliases", &source).bytes,
+                    Some(reason.into()),
+                    Some("aliases = [\"/former-address/\"]"),
+                    Some("Use absolute slash-delimited public paths for aliases."),
+                ))
+            })
+        })
+        .collect::<Result<Vec<_>, Box<Diagnostic>>>()?;
     let presentation = a
         .presentation
         .map(|v| spanned_attribute(v, "presentation", &source));
@@ -186,8 +228,10 @@ pub fn parse(relative: &std::path::Path, source: SourceFile) -> Result<Content, 
                 .collect(),
             custom,
         },
+        kind,
         address,
         address_span,
+        aliases,
         presentation,
         references: references(relative, &source, body_range.clone()),
         asset_references: asset_references(&source, body_range.clone()),
@@ -368,12 +412,23 @@ pub struct SiteConfig {
 pub struct Content {
     pub source: SourceFile,
     pub attributes: Attributes,
+    pub kind: ContentKind,
     pub address: Address,
     pub address_span: Option<SourceSpan>,
+    pub aliases: Vec<Address>,
     pub presentation: Option<Spanned<String>>,
     pub body: MarkdownBody,
     pub references: Vec<InternalReference>,
     pub asset_references: Vec<AssetReference>,
+}
+
+/// Native publication intent. It controls participation in derived surfaces,
+/// independently from a content file's path.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ContentKind {
+    Home,
+    Page,
+    Article,
 }
 
 #[derive(Debug)]

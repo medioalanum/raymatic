@@ -97,7 +97,7 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
         .content
         .iter()
         .filter(|item| !item.attributes.draft)
-        .filter(|item| item.source.path != publication.root.join("content/index.md"))
+        .filter(|item| item.kind == crate::content::ContentKind::Article)
         .map(|item| crate::output::FeedEntry {
             title: item.attributes.title.value.clone(),
             summary: item
@@ -124,12 +124,24 @@ pub fn evaluate(root: &Path) -> Result<PipelineSuccess, PipelineFailure> {
                 .map(|value| value.value.clone()),
         })
         .collect::<Vec<_>>();
+    let redirects = publication
+        .content
+        .iter()
+        .filter(|item| !item.attributes.draft)
+        .flat_map(|item| {
+            item.aliases
+                .iter()
+                .cloned()
+                .map(move |alias| (alias, item.address.clone()))
+        })
+        .collect::<Vec<_>>();
     let output = match timed(&mut timings.planning, || {
-        crate::output::plan_with_feeds(
+        crate::output::plan_with_feeds_and_redirects(
             rendered,
             &publication.assets,
             &feed_entries,
             publication.site.base_url.as_deref(),
+            &redirects,
         )
     }) {
         Ok(v) => v,
@@ -209,9 +221,7 @@ fn recent_entries(publication: &Publication) -> Vec<crate::render::PublicationEn
     let mut entries: Vec<_> = publication
         .content
         .iter()
-        .filter(|item| {
-            item.source.path != publication.root.join("content/index.md") && !item.attributes.draft
-        })
+        .filter(|item| item.kind == crate::content::ContentKind::Article && !item.attributes.draft)
         .map(|item| crate::render::PublicationEntry {
             title: item.attributes.title.value.clone(),
             date: item
@@ -253,7 +263,7 @@ fn resolve_presentation(
     content: &crate::content::Content,
 ) -> Result<(PathBuf, String), Box<Diagnostic>> {
     let Some(selection) = &content.presentation else {
-        let conventional_home = content.source.path == publication.root.join("content/index.md")
+        let conventional_home = content.kind == crate::content::ContentKind::Home
             && publication.root.join("presentation/index.html").is_file();
         if conventional_home {
             let path = publication.root.join("presentation/index.html");

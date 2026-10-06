@@ -165,7 +165,7 @@ pub fn page(
             og_title => og_title,
             og_description => og_description,
             twitter_card => twitter_card,
-            og_type => if content.attributes.date.is_some() { "article" } else { "website" },
+            og_type => if content.kind == crate::content::ContentKind::Article { "article" } else { "website" },
             reading_minutes => reading_minutes,
             previous => previous,
             next => next,

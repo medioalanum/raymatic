@@ -12,6 +12,8 @@ canonical_url, description, og_title, og_description,
 og_image, twitter_card, recent, previous, next, reading_minutes
 ```
 
+`kind = "page"` is useful for standalone material such as an about or policy page. Pages render through ordinary presentations but are intentionally absent from article feeds, archive navigation, and taxonomy listings.
+
 ## Different article presentation
 
 Create `presentation/article.html` and select it deliberately:
