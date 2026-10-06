@@ -40,7 +40,7 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
         };
         report.push_str(&format!(
             "| `{}` | transformable | Markdown to native {kind}; inspect unsupported links{accessibility} |\n",
-            relative.display(),
+            portable_path(relative),
         ));
     }
     report.push_str("\n## Static configuration findings\n\n");
@@ -198,6 +198,10 @@ fn markdown_files(root: &Path) -> Result<Vec<PathBuf>, AppError> {
 
 fn empty_image_alt_count(source: &str) -> usize {
     source.match_indices("![](").count()
+}
+
+fn portable_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn walk(root: &Path, directory: &Path, out: &mut Vec<PathBuf>) -> Result<(), AppError> {
@@ -429,7 +433,8 @@ fn io(error: std::io::Error) -> AppError {
 
 #[cfg(test)]
 mod tests {
-    use super::{empty_image_alt_count, generated_alt_text};
+    use super::{empty_image_alt_count, generated_alt_text, portable_path};
+    use std::path::Path;
 
     #[test]
     fn detects_images_without_alt_text() {
@@ -442,6 +447,14 @@ mod tests {
         assert_eq!(
             generated_alt_text("![](/assets/diagrams/t-model.svg) ![Existing](other.png)"),
             "![Image: t model](/assets/diagrams/t-model.svg) ![Existing](other.png)"
+        );
+    }
+
+    #[test]
+    fn inspection_paths_always_use_forward_slashes() {
+        assert_eq!(
+            portable_path(Path::new(r"content\pages\about.md")),
+            "content/pages/about.md"
         );
     }
 }
