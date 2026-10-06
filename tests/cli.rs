@@ -131,13 +131,23 @@ fn new_refuses_to_replace_an_existing_project() {
 fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     let root = tempfile::tempdir().unwrap();
     let source = root.path().join("pelican");
-    fs::create_dir_all(source.join("content")).unwrap();
-    fs::write(source.join("pelicanconf.py"), "SITENAME = 'Example'\n").unwrap();
+    fs::create_dir_all(source.join("content/pages")).unwrap();
+    fs::write(
+        source.join("pelicanconf.py"),
+        "SITENAME = 'Example'\nAUTHOR = 'Ada'\nPLUGINS = ['toc']\nTHEME = 'theme'\n",
+    )
+    .unwrap();
     fs::write(
         source.join("content/hello.md"),
         "Title: Hello\nDate: 2026-10-06\nTags: rust, publishing\nSlug: hello\n\nHello world.\n",
     )
     .unwrap();
+    fs::write(
+        source.join("content/pages/about.md"),
+        "Title: About\n\nAbout.\n",
+    )
+    .unwrap();
+    fs::write(source.join("content/logo.txt"), "asset").unwrap();
     let before = fs::read_to_string(source.join("content/hello.md")).unwrap();
     let inspected = ray()
         .current_dir(root.path())
@@ -145,11 +155,9 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
         .output()
         .unwrap();
     assert!(inspected.status.success());
-    assert!(
-        String::from_utf8(inspected.stdout)
-            .unwrap()
-            .contains("source: Pelican")
-    );
+    let report = String::from_utf8(inspected.stdout).unwrap();
+    assert!(report.contains("source: Pelican"));
+    assert!(report.contains("plugins: detected; not executed"));
     assert_eq!(
         fs::read_to_string(source.join("content/hello.md")).unwrap(),
         before
@@ -165,6 +173,20 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     let imported = fs::read_to_string(root.path().join("imported/content/hello.md")).unwrap();
     assert!(imported.contains("title = \"Hello\""));
     assert!(imported.contains("address = \"/hello/\""));
+    assert!(
+        fs::read_to_string(root.path().join("imported/content/about.md"))
+            .unwrap()
+            .contains("kind = \"page\"")
+    );
+    assert_eq!(
+        fs::read_to_string(root.path().join("imported/assets/logo.txt")).unwrap(),
+        "asset"
+    );
+    assert!(
+        fs::read_to_string(root.path().join("imported/site.toml"))
+            .unwrap()
+            .contains("title = \"Example\"")
+    );
     assert!(
         ray()
             .current_dir(root.path().join("imported"))

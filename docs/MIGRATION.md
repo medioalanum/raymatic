@@ -9,7 +9,9 @@ ray migrate inspect path/to/pelican-project
 ray migrate import path/to/pelican-project path/to/new-raymatic-project
 ```
 
-`inspect` is non-destructive. `import` requires a new or empty destination, writes a normal Raymatic project there, and leaves the source untouched. The supported subset is Markdown articles with portable Pelican header metadata: title, date, category, tags, summary, author, and slug. Themes, plugins, static-path selection, template behavior, redirects, arbitrary configuration, and generated output remain review items.
+`inspect` is non-destructive. `import` requires a new or empty destination, writes a normal Raymatic project there, validates it with Raymatic before publishing the destination, and leaves the source untouched. The supported subset is conventional Markdown under `content/` with portable Pelican header metadata: title, date, category, tags, summary, author, and slug. Markdown under `content/pages/` becomes native `kind = "page"`; other Markdown becomes `kind = "article"`. Non-Markdown files under `content/` are copied to `assets/`, except the source `theme/` tree.
+
+Themes, plugins, static-path selection, template behavior, redirects, arbitrary configuration, generated output, and links that need rewriting remain review items.
 
 The repository includes an advisory inventory script:
 
