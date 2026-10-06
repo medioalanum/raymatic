@@ -271,11 +271,14 @@ fn references(
             break;
         };
         let te = ts + c;
-        let target = &body[ts..te];
+        let target = body[ts..te].split_whitespace().next().unwrap_or("");
         let image = body[..start + o]
             .rfind('[')
             .is_some_and(|index| index > 0 && body.as_bytes()[index - 1] == b'!');
-        if !image && let Some(target) = ReferenceTarget::parse(target, relative) {
+        if !image
+            && !target.starts_with("/assets/")
+            && let Some(target) = ReferenceTarget::parse(target, relative)
+        {
             out.push(InternalReference {
                 target,
                 span: SourceSpan {
@@ -310,7 +313,10 @@ fn asset_references(source: &SourceFile, body_range: Range<usize>) -> Vec<AssetR
             break;
         };
         let target_end = target_start + close;
-        let target = &body[target_start..target_end];
+        let target = body[target_start..target_end]
+            .split_whitespace()
+            .next()
+            .unwrap_or("");
         let suffix_start = target.find(['?', '#']).unwrap_or(target.len());
         let asset_path = &target[..suffix_start];
         if asset_path.starts_with("/assets/") {

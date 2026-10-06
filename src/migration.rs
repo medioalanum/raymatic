@@ -223,6 +223,14 @@ fn copy_portable_assets(root: &Path, directory: &Path, destination: &Path) -> Re
 }
 
 fn convert(source: &str, kind: &str) -> String {
+    if let Some((front_matter, body)) = yaml_front_matter(source) {
+        return format!(
+            "+++\nkind = {:?}\n{}\n+++\n{}\n",
+            kind,
+            yaml_metadata(front_matter),
+            rewrite_markdown_links(body).replace("{static}/", "/assets/")
+        );
+    }
     let mut metadata = Vec::new();
     metadata.push(format!("kind = {:?}", kind));
     let mut body = Vec::new();
@@ -275,9 +283,78 @@ fn convert(source: &str, kind: &str) -> String {
     )
 }
 
+fn yaml_front_matter(source: &str) -> Option<(&str, &str)> {
+    let rest = source
+        .trim_start_matches('\u{feff}')
+        .strip_prefix("---\n")?;
+    let close = rest.find("\n---")?;
+    Some((&rest[..close], &rest[close + 4..]))
+}
+
+fn yaml_metadata(front_matter: &str) -> String {
+    let mut values = Vec::new();
+    let mut title = None;
+    let mut key = "";
+    for line in front_matter.lines() {
+        let trimmed = line.trim();
+        if line.starts_with(char::is_whitespace) {
+            if let Some(value) = trimmed.strip_prefix("- ") {
+                match key {
+                    "tags" => values.push(format!("tags = [{value:?}]")),
+                    "authors" if !values.iter().any(|value| value.starts_with("author =")) => {
+                        values.push(format!("author = {value:?}"))
+                    }
+                    _ => {}
+                }
+            } else if key == "title" && !trimmed.is_empty() {
+                title = Some(match title {
+                    Some(existing) => format!("{existing} {trimmed}"),
+                    None => trimmed.to_owned(),
+                });
+            }
+        } else if let Some((name, value)) = trimmed.split_once(':') {
+            key = name.trim();
+            let value = value.trim();
+            if !value.is_empty() && value != ">-" {
+                match key {
+                    "date" => values.push(format!("date = {:?}", value.get(..10).unwrap_or(value))),
+                    "title" => title = Some(value.to_owned()),
+                    "category" | "summary" => values.push(format!("{key} = {value:?}")),
+                    _ => {}
+                }
+            }
+        }
+    }
+    let mut tags = Vec::new();
+    values.retain(|value| {
+        if value.starts_with("tags = [") {
+            tags.push(
+                value
+                    .trim_start_matches("tags = [")
+                    .trim_end_matches(']')
+                    .to_owned(),
+            );
+            false
+        } else {
+            true
+        }
+    });
+    if !tags.is_empty() {
+        values.push(format!("tags = [{}]", tags.join(", ")));
+    }
+    if let Some(title) = title {
+        values.push(format!("title = {title:?}"));
+    }
+    values.join("\n")
+}
+
 fn rewrite_markdown_links(body: &str) -> String {
-    body.replace("](./pages/", "](")
+    body.replace("{filename}", "")
+        .replace("](./pages/", "](")
         .replace("](pages/", "](")
+        .replace("](/pages/", "](/")
+        .replace(".html#", "/#")
+        .replace(".html)", "/)")
         .replace(".md#", "/#")
         .replace(".md)", "/)")
 }

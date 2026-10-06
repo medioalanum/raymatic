@@ -139,12 +139,19 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     .unwrap();
     fs::write(
         source.join("content/hello.md"),
-        "Title: Hello\nDate: 2026-10-06 10:00\nStatus: draft\nTags: rust, publishing\nSlug: hello\nAlias: /old-hello/\n\nRead [About](pages/about.md).\n",
+        "Title: Hello\nDate: 2026-10-06 10:00\nStatus: draft\nTags: rust, publishing\nSlug: hello\nAlias: /old-hello/\n\nRead [About](pages/about.md) and [HTML page](/about.html).\n",
     )
     .unwrap();
     fs::write(
         source.join("content/pages/about.md"),
         "Title: About\n\nAbout.\n",
+    )
+    .unwrap();
+    fs::create_dir_all(source.join("content/img")).unwrap();
+    fs::write(source.join("content/img/logo.txt"), "logo").unwrap();
+    fs::write(
+        source.join("content/yaml.md"),
+        "\u{feff}---\ntitle: >-\n    YAML: migration\n    title\nauthors:\n    - Ada Lovelace\ntags:\n    - rust\n    - publishing\ndate: 2026-10-06 10:00\n---\n\n![Logo]({static}/img/logo.txt \"Raymatic logo\")\n\n[Download]({static}/img/logo.txt) [Self]({filename}yaml.md) [About]({filename}/pages/about.md)\n",
     )
     .unwrap();
     fs::write(source.join("content/logo.txt"), "asset").unwrap();
@@ -188,6 +195,15 @@ fn pelican_inspection_is_non_destructive_and_import_creates_a_native_project() {
     assert!(imported.contains("draft = true"));
     assert!(imported.contains("aliases = [\"/old-hello/\"]"));
     assert!(imported.contains("[About](about/)"));
+    assert!(imported.contains("[HTML page](/about/)"));
+    let yaml_imported = fs::read_to_string(root.path().join("imported/content/yaml.md")).unwrap();
+    assert!(yaml_imported.contains("title = \"YAML: migration title\""));
+    assert!(yaml_imported.contains("author = \"Ada Lovelace\""));
+    assert!(yaml_imported.contains("tags = [\"rust\", \"publishing\"]"));
+    assert!(yaml_imported.contains("![Logo](/assets/img/logo.txt \"Raymatic logo\")"));
+    assert!(yaml_imported.contains("[Download](/assets/img/logo.txt)"));
+    assert!(yaml_imported.contains("[Self](yaml/)"));
+    assert!(yaml_imported.contains("[About](/about/)"));
     assert!(
         fs::read_to_string(root.path().join("imported/content/about.md"))
             .unwrap()
