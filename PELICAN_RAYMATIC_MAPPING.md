@@ -1,4 +1,10 @@
-# Pelican → Raymatic Mapping
+# Historical Pelican to Raymatic mapping
+
+## Status
+
+Historical record of the first dogfooding experiment. This document describes the v0.1 experiment, not the current implementation or a supported Pelican import contract. In particular, current Raymatic code now has native date, category, tags, summary, assets, archive, feed, and reading-time behavior that this table describes as unavailable or as a workaround.
+
+The current migration boundary and evidence process are in [docs/MIGRATION.md](docs/MIGRATION.md), [docs/MIGRATION_READINESS.md](docs/MIGRATION_READINESS.md), and [docs/ROADMAP.md](docs/ROADMAP.md).
 
 | Pelican concept | Publication intent | Raymatic representation | Migration status |
 | --- | --- | --- | --- |
