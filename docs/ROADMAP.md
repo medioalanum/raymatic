@@ -4,7 +4,7 @@
 
 This roadmap supersedes `docs/ROADMAP_REMAINING.md` as the forward-looking plan. It is based on the implementation and tests in this repository, not on earlier plans or release records. Historical documents remain useful evidence, but do not define the current product contract.
 
-The next objective is to prove that Raymatic can represent ordinary content-oriented publications as native Raymatic projects before it automates migration from another generator. Migration is an import-time workflow, not a compatibility runtime.
+This is a historical planning document. The initial bounded Pelican inspection and import workflow is now implemented; its supported subset is documented in `docs/MIGRATION.md`. Migration remains an import-time workflow, not a compatibility runtime.
 
 The release order is:
 
@@ -20,7 +20,7 @@ WordPress is not in this sequence. It becomes an investigation only after all th
 
 ### Product surface
 
-The public CLI has four commands: `ray new [path]`, `ray dev`, `ray check`, and `ray build`. It has no migration command. `ray new` creates a conventional project. `check` evaluates without writing production output. `build` evaluates and then replaces `output/`. `dev` builds a private `.raymatic-preview/` snapshot, serves it at loopback, and watches source directories.
+At the time of review, the public CLI had four commands: `ray new [path]`, `ray dev`, `ray check`, and `ray build`. The current CLI also provides the bounded `ray migrate inspect` and `ray migrate import` Pelican workflow described in `docs/MIGRATION.md`. `ray new` creates a conventional project. `check` evaluates without writing production output. `build` evaluates and then replaces `output/`. `dev` builds a private `.raymatic-preview/` snapshot, serves it at loopback, and watches source directories.
 
 The shared pipeline is:
 

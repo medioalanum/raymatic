@@ -4,7 +4,14 @@ Raymatic starts from publication intent and derives the incidental outputs.
 
 ## Author declares
 
-Content declares a title and may declare date, summary, category, tags, author, draft state, address, language, image, and deliberate SEO overrides. Custom TOML attributes remain available for presentation-specific extensions.
+Content declares a title and may declare date, summary, category, tags, author, draft state, address, language, image, and deliberate SEO overrides. It can also declare `kind = "home"`, `kind = "page"`, or `kind = "article"`. A home is published at `/`; pages are standalone and do not enter article-derived feeds, archives, or taxonomies; articles do. Existing projects retain the path convention: `content/index.md` is home and other content defaults to articles. Custom TOML attributes remain available for presentation-specific extensions.
+
+When a public address changes, declare legacy slash-delimited paths with `aliases`. Raymatic emits a deterministic static redirect page for every alias and rejects collisions with a canonical address or another alias:
+
+```toml
+address = "/notes/routing/"
+aliases = ["/routing/", "/old-notes/routing/"]
+```
 
 An optional `site.toml` declares publication identity once:
 

@@ -164,6 +164,42 @@ fn successful_build_generates_archive_taxonomy_pages_and_feeds() {
 }
 
 #[test]
+fn explicit_pages_do_not_enter_article_derived_surfaces() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/about.md"),
+        "+++\ntitle = \"About\"\nkind = \"page\"\ncategory = \"Engineering\"\ntags = [\"publishing\"]\n+++\n\nAbout this publication.\n",
+    )
+    .unwrap();
+    let success = evaluate(root.path()).unwrap();
+    output::commit(root.path(), &success.output).unwrap();
+    assert!(root.path().join("output/about/index.html").is_file());
+    assert!(
+        !root
+            .path()
+            .join("output/categories/engineering/index.html")
+            .exists()
+    );
+    let feed = fs::read_to_string(root.path().join("output/feed.xml")).unwrap();
+    assert!(!feed.contains("About"));
+}
+
+#[test]
+fn aliases_emit_static_redirect_pages() {
+    let root = fixture("valid");
+    fs::write(
+        root.path().join("content/notes.md"),
+        "+++\ntitle = \"Notes\"\naddress = \"/notes/\"\naliases = [\"/old-notes/\"]\n+++\n\nNotes.\n",
+    )
+    .unwrap();
+    let success = evaluate(root.path()).unwrap();
+    output::commit(root.path(), &success.output).unwrap();
+    let redirect = fs::read_to_string(root.path().join("output/old-notes/index.html")).unwrap();
+    assert!(redirect.contains("url=/notes/"));
+    assert!(redirect.contains("href=\"/notes/\""));
+}
+
+#[test]
 fn malformed_front_matter_is_structured_and_source_aware() {
     let root = fixture("malformed");
     let failure = evaluate(root.path()).unwrap_err();

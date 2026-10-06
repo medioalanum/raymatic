@@ -96,6 +96,38 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
             }
         }
     }
+    let homes: Vec<_> = publication
+        .content
+        .iter()
+        .filter(|content| content.kind == crate::content::ContentKind::Home)
+        .collect();
+    if homes.len() > 1 {
+        for content in homes {
+            diagnostics.push(metadata_diagnostic(
+                content,
+                &None,
+                "Multiple home content items",
+                "A publication can have only one home content item.",
+                "one item with kind = \"home\"",
+                "Change the additional item to kind = \"page\" or kind = \"article\".",
+            ));
+        }
+    }
+    for content in publication
+        .content
+        .iter()
+        .filter(|content| content.kind == crate::content::ContentKind::Home)
+        .filter(|content| content.address.as_path() != "/")
+    {
+        diagnostics.push(metadata_diagnostic(
+            content,
+            &content.address_span,
+            "Home content must use the root address",
+            "The publication home is always published at /.",
+            "address = \"/\"",
+            "Remove the explicit address or set it to /.",
+        ));
+    }
     let mut addresses: BTreeMap<&str, Vec<&crate::content::Content>> = BTreeMap::new();
     for content in publication
         .content
@@ -106,6 +138,9 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
             .entry(content.address.as_path())
             .or_default()
             .push(content);
+        for alias in &content.aliases {
+            addresses.entry(alias.as_path()).or_default().push(content);
+        }
     }
     for (address, content) in addresses {
         if content.len() > 1 {
@@ -148,7 +183,10 @@ pub fn publication(publication: &Publication) -> Vec<Diagnostic> {
         .content
         .iter()
         .filter(|content| !content.attributes.draft)
-        .map(|item| item.address.as_path())
+        .flat_map(|item| {
+            std::iter::once(item.address.as_path())
+                .chain(item.aliases.iter().map(crate::content::Address::as_path))
+        })
         .collect();
     for content in publication
         .content
