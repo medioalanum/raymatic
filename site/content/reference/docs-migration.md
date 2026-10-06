@@ -3,7 +3,24 @@ title = "MIGRATION"
 +++
 
 
-Raymatic migrates publication intent, not the incidental machinery of another generator. Start with a clean project:
+Raymatic provides a deliberately bounded Pelican workflow. It never executes Pelican configuration, plugins, templates, themes, or hooks:
+
+```sh
+ray migrate inspect path/to/pelican-project
+ray migrate import path/to/pelican-project path/to/new-raymatic-project
+```
+
+For a source with empty image alternative text, use `--generate-alt-text` only when a deterministic filename label is acceptable:
+
+```sh
+ray migrate import --generate-alt-text path/to/pelican-project path/to/new-raymatic-project
+```
+
+`inspect` is non-destructive. `import` requires a new or empty destination, validates the generated project before publishing it, and leaves the source untouched. It supports conventional Markdown under `content/` with Pelican header metadata or YAML front matter; `content/pages/` becomes native pages and other Markdown becomes articles. Portable non-Markdown files become `assets/`, excluding the source `theme/` tree.
+
+The importer normalizes `{static}` and `{filename}` links plus local Markdown and `.html` references. Inspection reports plugins, themes, URL rules, static-path configuration, and empty image alternative text. `--generate-alt-text` fills only empty descriptions with `Image: filename`; strict mode remains the default. Themes, plugins, generated output, arbitrary configuration, non-slash legacy URLs, and visual parity remain review items.
+
+Raymatic migrates publication intent, not the incidental machinery of another generator. For manual work, start with a clean project:
 
 ```sh
 ray new my-publication

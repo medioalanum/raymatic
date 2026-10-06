@@ -4,6 +4,7 @@
 
 - Add explicit home, page, and article roles plus static alias redirects.
 - Add bounded Pelican inspection and import commands for portable Markdown metadata.
+- Expand the documented Pelican subset with YAML front matter, static and filename link normalization, pre-import reporting of empty image alternative text, and opt-in deterministic filename labels for those images.
 
 ## 0.1.0 — 2026-09-28
 

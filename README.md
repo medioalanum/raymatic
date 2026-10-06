@@ -59,7 +59,7 @@ The generated publication is written to `output/` only after a successful build.
 ray new → ray dev → ray check → ray build
 ```
 
-For the documented Pelican subset, use `ray migrate inspect <source>` before `ray migrate import <source> <destination>`. Inspection never changes the source; import creates an ordinary Raymatic project in a new or empty destination.
+For the documented Pelican subset, use `ray migrate inspect <source>` before `ray migrate import <source> <destination>`. Inspection never changes the source and reports review items such as plugins, themes, URL rules, and missing image alternative text; import creates an ordinary validated Raymatic project in a new or empty destination.
 
 - `new` creates a valid starter publication.
 - `dev` serves the latest valid preview, watches `content/` and `presentation/`, rebuilds the small publication, and refreshes the browser when a valid revision is available.
