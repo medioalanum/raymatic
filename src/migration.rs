@@ -40,6 +40,14 @@ pub fn inspect(source: &Path) -> Result<String, AppError> {
     if configuration.theme {
         report.push_str("- theme: detected; not executed or imported\n");
     }
+    if configuration.url_patterns {
+        report.push_str("- URL or SAVE_AS pattern: detected; explicit source addresses and aliases are required for preservation\n");
+    }
+    if configuration.static_paths {
+        report.push_str(
+            "- STATIC_PATHS: detected; only portable files discovered under content/ are copied\n",
+        );
+    }
     report.push_str("\nReview required:\n- pelicanconf.py and publishconf.py are not executed\n- themes, plugins, templates, static-path selection, and generated output are not imported\n");
     Ok(report)
 }
@@ -104,6 +112,8 @@ struct PelicanConfiguration {
     values: Vec<(String, String)>,
     plugins: bool,
     theme: bool,
+    url_patterns: bool,
+    static_paths: bool,
 }
 
 fn configuration(source: &Path) -> Result<PelicanConfiguration, AppError> {
@@ -113,6 +123,8 @@ fn configuration(source: &Path) -> Result<PelicanConfiguration, AppError> {
         let line = line.trim();
         out.plugins |= line.starts_with("PLUGINS") || line.contains("plugins");
         out.theme |= line.starts_with("THEME") || line.contains("theme");
+        out.url_patterns |= line.contains("_URL") || line.contains("_SAVE_AS");
+        out.static_paths |= line.starts_with("STATIC_PATHS");
         for (pelican, raymatic) in [
             ("SITENAME", "title"),
             ("AUTHOR", "author"),
@@ -250,7 +262,18 @@ fn convert(source: &str, kind: &str) -> String {
         }
         body.push(line);
     }
-    format!("+++\n{}\n+++\n{}\n", metadata.join("\n"), body.join("\n"))
+    format!(
+        "+++\n{}\n+++\n{}\n",
+        metadata.join("\n"),
+        rewrite_markdown_links(&body.join("\n"))
+    )
+}
+
+fn rewrite_markdown_links(body: &str) -> String {
+    body.replace("](./pages/", "](")
+        .replace("](pages/", "](")
+        .replace(".md#", "/#")
+        .replace(".md)", "/)")
 }
 fn io(error: std::io::Error) -> AppError {
     AppError::Operational(error.to_string())
